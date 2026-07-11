@@ -41,6 +41,10 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -84,12 +88,7 @@ fun AddDocumentScreen(
     var rcExpiry by remember { mutableStateOf(documentToEdit?.rcExpiry ?: "") }
 
     // Aadhaar fields
-    var aadhaarNumber by remember {
-        mutableStateOf(
-            if (documentToEdit?.aadhaarNumber != null) documentToEdit.aadhaarNumber.chunked(4).joinToString(" ")
-            else ""
-        )
-    }
+    var aadhaarNumber by remember { mutableStateOf(documentToEdit?.aadhaarNumber ?: "") }
     var aadhaarName by remember { mutableStateOf(documentToEdit?.aadhaarName ?: "") }
     var aadhaarDob by remember { mutableStateOf(documentToEdit?.aadhaarDob ?: "") }
     var aadhaarGender by remember { mutableStateOf(documentToEdit?.aadhaarGender ?: "Male") }
@@ -102,43 +101,80 @@ fun AddDocumentScreen(
 
     // Card fields
     var cardholderName by remember { mutableStateOf(documentToEdit?.cardholderName ?: "") }
-    var cardNumber by remember {
+    var cardNumber by remember { mutableStateOf(documentToEdit?.cardNumber ?: "") }
+    var cardExpiry by remember {
         mutableStateOf(
-            if (documentToEdit?.cardNumber != null) documentToEdit.cardNumber.chunked(4).joinToString(" ")
-            else ""
+            (documentToEdit?.cardExpiry ?: "").filter { it.isDigit() }
         )
     }
-    var cardExpiry by remember { mutableStateOf(documentToEdit?.cardExpiry ?: "") }
     var cardCvv by remember { mutableStateOf(documentToEdit?.cardCvv ?: "") }
     var cardType by remember { mutableStateOf(documentToEdit?.cardType ?: "Visa") }
 
-    // Attachment State
-    var selectedImageBytes by remember { mutableStateOf<ByteArray?>(null) }
-    var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    // Merged layout list representing attached pages (maximum 2 pages)
+    val attachedBitmaps = remember { mutableStateListOf<Bitmap>() }
     var isPdfAttached by remember { mutableStateOf(false) }
+    var pdfBytes by remember { mutableStateOf<ByteArray?>(null) }
+
     var ocrTextResult by remember { mutableStateOf<String?>(null) }
     var isOcrRunning by remember { mutableStateOf(false) }
-    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Load existing attachment when editing
+    // Load existing attachments when editing (compatible with single image or multi-page PDF/back image paths)
     LaunchedEffect(documentToEdit) {
         if (documentToEdit != null && onLoadAttachment != null) {
-            documentToEdit.imagePath?.let { path ->
-                coroutineScope.launch(Dispatchers.IO) {
-                    isOcrRunning = true
+            coroutineScope.launch(Dispatchers.IO) {
+                isOcrRunning = true
+                // Load Front/Merged
+                documentToEdit.imagePath?.let { path ->
                     val bytes = onLoadAttachment(path)
                     if (bytes != null) {
-                        selectedImageBytes = bytes
                         if (path.endsWith(".pdf")) {
                             isPdfAttached = true
+                            pdfBytes = bytes
+                            val tempFile = File(context.cacheDir, "temp_edit.pdf").apply {
+                                writeBytes(bytes); deleteOnExit()
+                            }
+                            val pfd = android.os.ParcelFileDescriptor.open(tempFile, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
+                            val renderer = PdfRenderer(pfd)
+                            val list = mutableListOf<Bitmap>()
+                            val pageCount = minOf(renderer.pageCount, 2) // Limit to 2 pages
+                            for (i in 0 until pageCount) {
+                                val page = renderer.openPage(i)
+                                val bitmap = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
+                                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                                list.add(bitmap)
+                                page.close()
+                            }
+                            renderer.close(); pfd.close(); tempFile.delete()
+                            withContext(Dispatchers.Main) {
+                                attachedBitmaps.clear()
+                                attachedBitmaps.addAll(list)
+                            }
                         } else {
                             try {
-                                selectedImageBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                withContext(Dispatchers.Main) {
+                                    attachedBitmaps.clear()
+                                    attachedBitmaps.add(bitmap)
+                                }
                             } catch (e: Exception) { e.printStackTrace() }
                         }
                     }
-                    isOcrRunning = false
                 }
+                // Load Back if it existed separately
+                documentToEdit.backImagePath?.let { path ->
+                    val bytes = onLoadAttachment(path)
+                    if (bytes != null) {
+                        try {
+                            val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            withContext(Dispatchers.Main) {
+                                if (attachedBitmaps.size < 2) {
+                                    attachedBitmaps.add(bitmap)
+                                }
+                            }
+                        } catch (e: Exception) { e.printStackTrace() }
+                    }
+                }
+                isOcrRunning = false
             }
         }
     }
@@ -147,60 +183,99 @@ fun AddDocumentScreen(
     var showErrorAlert by remember { mutableStateOf(false) }
     var validationErrorMessage by remember { mutableStateOf("") }
 
-    // ── IMPROVED OCR Auto-fill ────────────────────────────────────────────────
+    // ── HIGHLY ACCURATE OCR Auto-fill ─────────────────────────────────────────
     fun runAutoFill(text: String) {
         val lines = text.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
         if (lines.isEmpty()) return
 
-        // ── Step 1: structured label→value scanning ─────────────────────────
-        // Build a map of which line index holds which label
-        val labelMap = mutableMapOf<String, Int>() // label keyword → line index
-        val labelKeywords = listOf(
-            "NAME", "FATHER", "MOTHER", "S/O", "D/O", "W/O",
-            "DOB", "DATE OF BIRTH", "YEAR OF BIRTH", "VALIDITY",
-            "VALID", "EXPIRY", "CARDHOLDER", "HOLDER"
-        )
-        lines.forEachIndexed { index, line ->
-            labelKeywords.forEach { keyword ->
-                if (line.contains(keyword, ignoreCase = true)) {
-                    labelMap[keyword] = index
-                }
-            }
+        // ── Helper: clean misread characters in numeric fields ──────────────
+        fun cleanNumericString(input: String): String {
+            return input.uppercase()
+                .replace("O", "0")
+                .replace("I", "1")
+                .replace("L", "1")
+                .replace("S", "5")
+                .replace("Z", "2")
+                .replace("B", "8")
         }
 
-        // Extracts the best non-label non-number text from the next N lines after `fromIndex`
-        fun getValueAfterLabel(fromIndex: Int, maxLook: Int = 2): String? {
-            for (i in (fromIndex + 1)..(fromIndex + maxLook)) {
-                if (i >= lines.size) break
-                val candidate = lines[i].trim()
-                // Must be primarily alphabetic (allow spaces/hyphens/dots), at least 2 words or 5 chars
-                val cleaned = candidate.replace("-", " ").replace(".", " ").trim()
-                val words = cleaned.split(" ").filter { it.isNotEmpty() }
-                val isAlphaWords = words.all { w -> w.all { it.isLetter() } }
-                if (isAlphaWords && cleaned.length >= 3) return candidate
-            }
-            return null
-        }
-
-        // ── Step 2: gather name candidates from all lines ────────────────────
-        // A valid name candidate: ≥2 words, all alphabetic, not a header keyword
+        // Expanded headerKeywords to filter out document card labels and noise
         val headerKeywords = setOf(
             "INCOME", "TAX", "DEPT", "GOVT", "INDIA", "CARD", "PERMANENT",
             "ACCOUNT", "NUMBER", "SIGNATURE", "GENDER", "MALE", "FEMALE",
             "DOB", "BIRTH", "YEAR", "AUTHORITY", "UNIQUE", "IDENTIFICATION",
             "GOVERNMENT", "DEPARTMENT", "REPUBLIC", "AADHAAR", "AADHAR",
-            "PAN", "MINISTRY", "COMMISSION", "ENROLLMENT", "VID"
+            "PAN", "MINISTRY", "COMMISSION", "ENROLLMENT", "VID", "STATE",
+            "DRIVING", "LICENCE", "LICENSE", "CERTIFICATE", "REGISTRATION",
+            "TRANSPORT", "OFFICE", "FATHER", "MOTHER", "SPOUSE", "HUSBAND",
+            "WIFE", "GUARDIAN", "NAME", "ADDRESS", "INCOME TAX", "VALID",
+            "EXPIRY", "ISSUE", "DATE", "HOLDER", "PHOTO", "SEX", "TELEPHONE",
+            "MOBILE", "PHONE", "NO", "NUM", "RTO", "UNION", "TERRITORY",
+            "DETAILS", "INFO", "NATIONAL", "AUTHORITY"
         )
 
-        val nameCandidates = lines.filter { line ->
-            // Allow spaces and hyphens, require all tokens to be alphabetic
-            val words = line.trim().split("\\s+".toRegex()).filter { it.isNotEmpty() }
-            val allAlpha = words.isNotEmpty() && words.all { w -> w.replace("-", "").all { it.isLetter() } }
-            val notHeader = words.none { w -> w.uppercase() in headerKeywords }
-            val longEnough = line.trim().length >= 4
-            // Must have at least 2 words OR be clearly a single-name-only document
-            allAlpha && notHeader && longEnough
+        // Helper to extract suffix values on the same line as a label
+        fun getValueFromLine(line: String, keyword: String): String? {
+            val idx = line.indexOf(keyword, ignoreCase = true)
+            if (idx != -1) {
+                val suffix = line.substring(idx + keyword.length).trim()
+                // Clean leading punctuation like ":", "-", "/", etc.
+                val cleanedSuffix = suffix.replace(Regex("^[:\\-/.\\s]+"), "").trim()
+                
+                val hasDigits = cleanedSuffix.any { it.isDigit() }
+                val alphaSpaceDots = cleanedSuffix.count { it.isLetter() || it == ' ' || it == '.' || it == '-' }
+                val isMostlyAlpha = cleanedSuffix.isNotEmpty() && (alphaSpaceDots.toFloat() / cleanedSuffix.length >= 0.8f)
+                val isHeaderWord = headerKeywords.any { cleanedSuffix.contains(it, ignoreCase = true) }
+                
+                if (!hasDigits && isMostlyAlpha && !isHeaderWord && cleanedSuffix.length >= 4) {
+                    return cleanedSuffix
+                }
+            }
+            return null
         }
+
+        // Helper to extract a name candidate after a label index
+        fun getValueAfterLabel(fromIndex: Int, maxLook: Int = 2): String? {
+            for (i in (fromIndex + 1)..(fromIndex + maxLook)) {
+                if (i >= lines.size) break
+                val candidate = lines[i].trim()
+                val hasDigits = candidate.any { it.isDigit() }
+                
+                val alphaSpaceDots = candidate.count { it.isLetter() || it == ' ' || it == '.' || it == '-' }
+                val isMostlyAlpha = candidate.isNotEmpty() && (alphaSpaceDots.toFloat() / candidate.length >= 0.8f)
+                val isHeaderWord = headerKeywords.any { candidate.contains(it, ignoreCase = true) }
+
+                if (!hasDigits && isMostlyAlpha && !isHeaderWord && candidate.length >= 4) {
+                    return candidate
+                }
+            }
+            return null
+        }
+
+        // Helper to search both suffix and next-lines for a label keyword
+        fun findValueForLabel(keyword: String): String? {
+            for (i in lines.indices) {
+                if (lines[i].contains(keyword, ignoreCase = true)) {
+                    val sameLine = getValueFromLine(lines[i], keyword)
+                    if (sameLine != null) return sameLine
+                    val nextLines = getValueAfterLabel(i)
+                    if (nextLines != null) return nextLines
+                }
+            }
+            return null
+        }
+
+        // ── Step 2: gather name candidates from all lines ────────────────────
+        val nameCandidates = lines.map { it.trim() }.filter { line ->
+            val hasDigits = line.any { it.isDigit() }
+            val isHeader = headerKeywords.any { line.contains(it, ignoreCase = true) }
+            val alphaSpaceDots = line.count { it.isLetter() || it == ' ' || it == '.' || it == '-' }
+            val isMostlyAlpha = line.isNotEmpty() && (alphaSpaceDots.toFloat() / line.length >= 0.8f)
+            
+            !hasDigits && !isHeader && isMostlyAlpha && line.length >= 4
+        }
+
+        val dateRegex = Regex("\\b\\d{2}\\s*[/.\\-]\\s*\\d{2}\\s*[/.\\-]\\s*\\d{4}\\b")
 
         when (documentType) {
             DocumentType.PAYMENT_CARD -> {
@@ -213,107 +288,154 @@ fun AddDocumentScreen(
                     }
                 }
                 Regex("\\b(0[1-9]|1[0-2])/(\\d{2})\\b").find(text)?.value?.let { cardExpiry = it }
+                
                 val multiWordCandidates = nameCandidates.filter { it.split(" ").size >= 2 }
                 if (multiWordCandidates.isNotEmpty()) cardholderName = multiWordCandidates.first()
                 else if (nameCandidates.isNotEmpty()) cardholderName = nameCandidates.first()
             }
 
             DocumentType.AADHAAR_CARD -> {
-                // Aadhaar number: 12 digits in groups of 4
-                Regex("\\b\\d{4}[ -]?\\d{4}[ -]?\\d{4}\\b").find(text)?.value?.let {
+                val cleanedTextForAadhaar = cleanNumericString(text)
+                Regex("\\b\\d{4}[ -]?\\d{4}[ -]?\\d{4}\\b").find(cleanedTextForAadhaar)?.value?.let {
                     aadhaarNumber = it.replace(" ", "").replace("-", "").chunked(4).joinToString(" ")
                 }
 
-                // Gender
                 if (text.contains("Female", ignoreCase = true)) aadhaarGender = "Female"
                 else if (text.contains("Male", ignoreCase = true)) aadhaarGender = "Male"
 
-                // DOB: handle DD/MM/YYYY, DD-MM-YYYY, and "Year of Birth: YYYY"
-                val fullDobRegex = Regex("\\b\\d{2}[/\\-]\\d{2}[/\\-]\\d{4}\\b")
-                val yobRegex = Regex("(?:Year\\s*of\\s*Birth|YOB)\\s*[:\\-]?\\s*(\\d{4})", RegexOption.IGNORE_CASE)
-                val yobSimple = Regex("\\b(19|20)\\d{2}\\b")
-                fullDobRegex.find(text)?.value?.let { aadhaarDob = it }
-                    ?: yobRegex.find(text)?.groupValues?.getOrNull(1)?.let { aadhaarDob = it }
-                    ?: yobSimple.find(text)?.value?.let { aadhaarDob = it }
+                dateRegex.find(text)?.value?.let { aadhaarDob = it.replace(" ", "").replace(".", "-").replace("/", "-") }
+                    ?: Regex("(?:Year\\s*of\\s*Birth|YOB)\\s*[:\\-]?\\s*(\\d{4})", RegexOption.IGNORE_CASE).find(text)?.groupValues?.getOrNull(1)?.let { aadhaarDob = it }
+                    ?: Regex("\\b(19|20)\\d{2}\\b").find(cleanNumericString(text))?.value?.let { aadhaarDob = it }
 
-                // Name: prefer structured NAME label → next alpha line
-                val nameIdx = labelMap["NAME"]
-                if (nameIdx != null) {
-                    getValueAfterLabel(nameIdx)?.let { aadhaarName = it }
-                } else {
-                    val multiWordCandidates = nameCandidates.filter { it.split(" ").size >= 2 }
-                    if (multiWordCandidates.isNotEmpty()) aadhaarName = multiWordCandidates.first()
-                    else if (nameCandidates.isNotEmpty()) aadhaarName = nameCandidates.first()
+                // Aadhaar Name: Scan upwards from the DOB/YOB line if found
+                var foundNameUpwards = false
+                var dobIndex = -1
+                for (i in lines.indices) {
+                    if (lines[i].contains("DOB", ignoreCase = true) || 
+                        lines[i].contains("Birth", ignoreCase = true) || 
+                        lines[i].contains("YOB", ignoreCase = true) ||
+                        dateRegex.containsMatchIn(lines[i])) {
+                        dobIndex = i
+                        break
+                    }
+                }
+                if (dobIndex > 0) {
+                    for (i in (dobIndex - 1) downTo maxOf(0, dobIndex - 3)) {
+                        val candidate = lines[i].trim()
+                        val hasDigits = candidate.any { it.isDigit() }
+                        val isHeader = headerKeywords.any { candidate.contains(it, ignoreCase = true) }
+                        val alphaSpaceDots = candidate.count { it.isLetter() || it == ' ' || it == '.' || it == '-' }
+                        val isMostlyAlpha = candidate.isNotEmpty() && (alphaSpaceDots.toFloat() / candidate.length >= 0.8f)
+                        
+                        if (!hasDigits && !isHeader && isMostlyAlpha && candidate.length >= 4) {
+                            aadhaarName = candidate
+                            foundNameUpwards = true
+                            break
+                        }
+                    }
+                }
+
+                if (!foundNameUpwards) {
+                    val nameValue = findValueForLabel("NAME")
+                    if (nameValue != null) {
+                        aadhaarName = nameValue
+                    } else {
+                        val multiWord = nameCandidates.filter { it.split(" ").size >= 2 }
+                        if (multiWord.isNotEmpty()) aadhaarName = multiWord.first()
+                        else if (nameCandidates.isNotEmpty()) aadhaarName = nameCandidates.first()
+                    }
                 }
             }
 
             DocumentType.PAN_CARD -> {
-                // PAN: 5 letters + 4 digits + 1 letter
-                Regex("[A-Z]{5}[0-9]{4}[A-Z]").find(text.uppercase())?.value?.let { panNumber = it }
-
-                // DOB
-                Regex("\\b\\d{2}[/\\-]\\d{2}[/\\-]\\d{4}\\b").find(text)?.value?.let { panDob = it }
-
-                // Name and Father's name via structured label scanning
-                val nameIdx = labelMap["NAME"]
-                val fatherIdx = labelMap["FATHER"] ?: labelMap["S/O"] ?: labelMap["D/O"] ?: labelMap["W/O"]
-
-                if (nameIdx != null) {
-                    getValueAfterLabel(nameIdx)?.let { panName = it }
+                val panRawMatch = Regex("\\b[A-Z0-9]{5}[0-9A-Z]{4}[A-Z0-9]\\b", RegexOption.IGNORE_CASE).find(text)
+                panRawMatch?.value?.let { raw ->
+                    val sb = java.lang.StringBuilder()
+                    val upper = raw.uppercase()
+                    for (i in 0 until 5) {
+                        val c = upper[i]
+                        sb.append(if (c.isDigit()) when(c) { '0'->'O'; '1'->'I'; '5'->'S'; '2'->'Z'; '8'->'B'; else->c } else c)
+                    }
+                    for (i in 5 until 9) {
+                        val c = upper[i]
+                        sb.append(if (c.isLetter()) when(c) { 'O'->'0'; 'I'->'1'; 'L'->'1'; 'S'->'5'; 'Z'->'2'; 'B'->'8'; else->c } else c)
+                    }
+                    val last = upper[9]
+                    sb.append(if (last.isDigit()) when(last) { '0'->'O'; '1'->'I'; '5'->'S'; '2'->'Z'; '8'->'B'; else->last } else last)
+                    panNumber = sb.toString()
                 }
-                if (fatherIdx != null) {
-                    getValueAfterLabel(fatherIdx)?.let { panFatherName = it }
-                }
 
-                // Fallback: use multi-word name candidates in order
-                if (panName.isEmpty() || panFatherName.isEmpty()) {
-                    val multiWord = nameCandidates.filter { it.split(" ").size >= 2 }
-                    if (panName.isEmpty() && multiWord.isNotEmpty()) panName = multiWord.first()
-                    if (panFatherName.isEmpty() && multiWord.size > 1) panFatherName = multiWord[1]
+                dateRegex.find(text)?.value?.let { panDob = it.replace(" ", "").replace(".", "-").replace("/", "-") }
+
+                val nameVal = findValueForLabel("NAME")
+                if (nameVal != null) panName = nameVal
+
+                val fatherVal = findValueForLabel("FATHER") ?: findValueForLabel("S/O") ?: findValueForLabel("D/O") ?: findValueForLabel("W/O")
+                if (fatherVal != null) panFatherName = fatherVal
+
+                val multiWord = nameCandidates.filter { it.split(" ").size >= 2 }
+                if (panName.isEmpty()) {
+                    multiWord.getOrNull(0)?.let { panName = it }
+                    if (panFatherName.isEmpty()) {
+                        multiWord.getOrNull(1)?.let { panFatherName = it }
+                    }
+                } else if (panFatherName.isEmpty()) {
+                    multiWord.find { it != panName }?.let { panFatherName = it }
                 }
             }
 
             DocumentType.DRIVERS_LICENSE -> {
-                // Indian DL format: STATE_CODE + 2-digit year + 7 digits (e.g. MH12 20120012345)
-                val dlRegex = Regex("[A-Z]{2}[0-9]{2}\\s?[0-9]{4}\\s?[0-9]{7}|[A-Z]{2}-[0-9]{2}-[0-9]{4}-[0-9]{7}")
-                dlRegex.find(text.uppercase())?.value?.let {
-                    dlNumber = it.replace(" ", "").replace("-", "")
+                val dlRawMatch = Regex("\\b([A-Z]{2})[\\s-]?([0-9A-Z]{2})[\\s-]?([0-9A-Z]{4})[\\s-]?([0-9A-Z]{7})\\b", RegexOption.IGNORE_CASE).find(text)
+                dlRawMatch?.let { match ->
+                    val state = match.groupValues[1].uppercase()
+                    val rto = cleanNumericString(match.groupValues[2])
+                    val year = cleanNumericString(match.groupValues[3])
+                    val unique = cleanNumericString(match.groupValues[4])
+                    dlNumber = "$state$rto$year$unique"
+                } ?: run {
+                    Regex("\\b[A-Z0-9]{11,16}\\b", RegexOption.IGNORE_CASE).find(text)?.value?.let {
+                        dlNumber = it.uppercase().replace(" ", "").replace("-", "")
+                    }
                 }
 
-                // Dates: first date = DOB, last date = validity
-                val dates = Regex("\\b\\d{2}[/\\-]\\d{2}[/\\-]\\d{4}\\b").findAll(text).toList()
-                if (dates.isNotEmpty()) dlDob = dates.first().value
-                if (dates.size > 1) dlExpiry = dates.last().value
+                val dates = dateRegex.findAll(text).toList()
+                if (dates.isNotEmpty()) {
+                    dlDob = dates.first().value.replace(" ", "").replace(".", "-").replace("/", "-")
+                    if (dates.size > 1) {
+                        dlExpiry = dates.last().value.replace(" ", "").replace(".", "-").replace("/", "-")
+                    }
+                }
 
-                // Name via label or candidate
-                val nameIdx = labelMap["NAME"] ?: labelMap["HOLDER"]
-                if (nameIdx != null) {
-                    getValueAfterLabel(nameIdx)?.let { dlHolderName = it }
-                } else {
+                val holderVal = findValueForLabel("NAME") ?: findValueForLabel("HOLDER")
+                if (holderVal != null) dlHolderName = holderVal
+
+                if (dlHolderName.isEmpty()) {
                     val multiWord = nameCandidates.filter { it.split(" ").size >= 2 }
                     if (multiWord.isNotEmpty()) dlHolderName = multiWord.first()
                 }
 
-                // State from DL number prefix
                 if (dlNumber.length >= 2) dlState = dlNumber.take(2)
             }
 
             DocumentType.VEHICLE_RC -> {
-                // RC format: e.g. MH12AB1234 or MH 12 AB 1234
-                val rcRegex = Regex("[A-Z]{2}[\\s-]?[0-9]{1,2}[\\s-]?[A-Z]{1,3}[\\s-]?[0-9]{4}")
-                rcRegex.find(text.uppercase())?.value?.let {
-                    rcNumber = it.replace(" ", "").replace("-", "")
+                val rcRawMatch = Regex("\\b([A-Z]{2})[\\s-]?([0-9A-Z]{2})[\\s-]?([A-Z]{1,3})[\\s-]?([0-9A-Z]{4})\\b", RegexOption.IGNORE_CASE).find(text)
+                rcRawMatch?.let { match ->
+                    val state = match.groupValues[1].uppercase()
+                    val rto = cleanNumericString(match.groupValues[2])
+                    val code = match.groupValues[3].uppercase()
+                    val unique = cleanNumericString(match.groupValues[4])
+                    rcNumber = "$state$rto$code$unique"
                 }
 
-                // RC expiry: last date in text
-                val dates = Regex("\\b\\d{2}[/\\-]\\d{2}[/\\-]\\d{4}\\b").findAll(text).toList()
-                if (dates.isNotEmpty()) rcExpiry = dates.last().value
+                val dates = dateRegex.findAll(text).toList()
+                if (dates.isNotEmpty()) {
+                    rcExpiry = dates.last().value.replace(" ", "").replace(".", "-").replace("/", "-")
+                }
 
-                // Owner name
-                val nameIdx = labelMap["NAME"] ?: labelMap["HOLDER"]
-                if (nameIdx != null) {
-                    getValueAfterLabel(nameIdx)?.let { rcOwnerName = it }
-                } else {
+                val ownerVal = findValueForLabel("NAME") ?: findValueForLabel("HOLDER") ?: findValueForLabel("OWNER")
+                if (ownerVal != null) rcOwnerName = ownerVal
+
+                if (rcOwnerName.isEmpty()) {
                     val multiWord = nameCandidates.filter { it.split(" ").size >= 2 }
                     if (multiWord.isNotEmpty()) rcOwnerName = multiWord.first()
                 }
@@ -321,84 +443,96 @@ fun AddDocumentScreen(
         }
     }
 
-    // ── Image/PDF Processors ─────────────────────────────────────────────────
+    // Runs OCR on all attached bitmaps in order, aggregates text, and triggers auto-fill
+    fun runOcrOnBitmaps(bitmaps: List<Bitmap>) {
+        isOcrRunning = true
+        coroutineScope.launch(Dispatchers.Default) {
+            try {
+                val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                val sb = java.lang.StringBuilder()
+                for (bitmap in bitmaps) {
+                    val image = InputImage.fromBitmap(bitmap, 0)
+                    val visionText = Tasks.await(recognizer.process(image))
+                    sb.append(visionText.text).append("\n")
+                }
+                val compiledText = sb.toString()
+                withContext(Dispatchers.Main) {
+                    ocrTextResult = compiledText.trim()
+                    runAutoFill(compiledText)
+                    isOcrRunning = false
+                    Toast.makeText(context, "OCR details filled successfully!", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    isOcrRunning = false
+                    Toast.makeText(context, "OCR scanning failed", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    // ── Image / PDF Processing Handlers ─────────────────────────────────────
     fun processImageUri(uri: Uri) {
         try {
             isOcrRunning = true
             isPdfAttached = false
-            context.contentResolver.openInputStream(uri)?.use { stream ->
-                selectedImageBytes = stream.readBytes()
-            }
+            pdfBytes = null
+
             val bitmap = if (Build.VERSION.SDK_INT < 28) {
                 @Suppress("DEPRECATION")
                 MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
             } else {
                 ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri))
             }
-            selectedImageBitmap = bitmap
-            val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-            recognizer.process(InputImage.fromFilePath(context, uri))
-                .addOnSuccessListener { visionText ->
-                    isOcrRunning = false
-                    ocrTextResult = visionText.text
-                    runAutoFill(visionText.text)
-                    Toast.makeText(context, "Details extracted!", Toast.LENGTH_SHORT).show()
-                }
-                .addOnFailureListener { e ->
-                    isOcrRunning = false
-                    e.printStackTrace()
-                    Toast.makeText(context, "OCR failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
-                }
+
+            attachedBitmaps.add(bitmap)
+            runOcrOnBitmaps(attachedBitmaps)
         } catch (e: Exception) {
             isOcrRunning = false
             e.printStackTrace()
-            Toast.makeText(context, "Error loading image: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
         }
     }
 
     fun processPdfUri(uri: Uri) {
         isOcrRunning = true
-        selectedImageBitmap = null
         isPdfAttached = true
         coroutineScope.launch {
             try {
-                withContext(Dispatchers.IO) {
-                    context.contentResolver.openInputStream(uri)?.use { stream ->
-                        selectedImageBytes = stream.readBytes()
+                val bytes = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                }
+                pdfBytes = bytes
+
+                val bitmaps = withContext(Dispatchers.IO) {
+                    val tempFile = File(context.cacheDir, "temp_ocr.pdf").apply {
+                        writeBytes(bytes!!)
+                        deleteOnExit()
                     }
+                    val pfd = android.os.ParcelFileDescriptor.open(tempFile, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
+                    val renderer = PdfRenderer(pfd)
+                    val list = mutableListOf<Bitmap>()
+                    val pageCount = minOf(renderer.pageCount, 2) // Limit to first 2 pages
+                    for (i in 0 until pageCount) {
+                        val page = renderer.openPage(i)
+                        val bitmap = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
+                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        list.add(bitmap)
+                        page.close()
+                    }
+                    renderer.close(); pfd.close(); tempFile.delete()
+                    list
                 }
-                val extractedText = withContext(Dispatchers.IO) {
-                    val pfd = context.contentResolver.openFileDescriptor(uri, "r")
-                    if (pfd != null) {
-                        val renderer = PdfRenderer(pfd)
-                        val textBuilder = StringBuilder()
-                        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-                        val pageCount = minOf(renderer.pageCount, 3)
-                        for (i in 0 until pageCount) {
-                            val page = renderer.openPage(i)
-                            val bitmap = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
-                            page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                            page.close()
-                            val visionText = Tasks.await(recognizer.process(InputImage.fromBitmap(bitmap, 0)))
-                            textBuilder.append(visionText.text).append("\n")
-                        }
-                        renderer.close(); pfd.close()
-                        textBuilder.toString()
-                    } else ""
-                }
-                isOcrRunning = false
-                if (extractedText.isNotEmpty()) {
-                    ocrTextResult = extractedText
-                    runAutoFill(extractedText)
-                    Toast.makeText(context, "PDF extracted!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(context, "No text found in PDF", Toast.LENGTH_SHORT).show()
-                }
+
+                attachedBitmaps.clear()
+                attachedBitmaps.addAll(bitmaps)
+                runOcrOnBitmaps(bitmaps)
             } catch (e: Exception) {
                 isOcrRunning = false
                 isPdfAttached = false
                 e.printStackTrace()
-                Toast.makeText(context, "PDF error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "PDF processing failed", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -422,7 +556,7 @@ fun AddDocumentScreen(
             MainActivity.isLaunchingSystemIntent = true
             val options = com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.Builder()
                 .setGalleryImportAllowed(false)
-                .setPageLimit(1)
+                .setPageLimit(2) // Allow scanning maximum 2 pages inside a single scan!
                 .setResultFormats(com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.RESULT_FORMAT_PDF)
                 .setScannerMode(com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions.SCANNER_MODE_FULL)
                 .build()
@@ -435,13 +569,28 @@ fun AddDocumentScreen(
                     }
                     .addOnFailureListener { e ->
                         e.printStackTrace()
-                        Toast.makeText(context, "Scanner failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Scanner failed", Toast.LENGTH_SHORT).show()
                     }
             }
         } catch (e: Exception) {
             e.printStackTrace()
             Toast.makeText(context, "Error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    // Combines separate pages into a single PDF document file bytes
+    fun createPdfFromBitmaps(bitmaps: List<Bitmap>): ByteArray {
+        val pdfDocument = android.graphics.pdf.PdfDocument()
+        bitmaps.forEachIndexed { index, bitmap ->
+            val pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
+            val page = pdfDocument.startPage(pageInfo)
+            page.canvas.drawBitmap(bitmap, 0f, 0f, null)
+            pdfDocument.finishPage(page)
+        }
+        val stream = java.io.ByteArrayOutputStream()
+        pdfDocument.writeTo(stream)
+        pdfDocument.close()
+        return stream.toByteArray()
     }
 
     // ── UI ────────────────────────────────────────────────────────────────────
@@ -499,8 +648,8 @@ fun AddDocumentScreen(
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ── Attachment Section ────────────────────────────────────
-                SectionHeader("Document Attachment", accentColor)
+                // ── ATTACHMENT AREA ──────────────────────────────────────────
+                SectionHeader("Document scan (Merge Front & Back)", accentColor)
                 Spacer(modifier = Modifier.height(10.dp))
 
                 if (isOcrRunning) {
@@ -515,104 +664,136 @@ fun AddDocumentScreen(
                     ) {
                         CircularProgressIndicator(color = accentColor, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text("Scanning & extracting text offline…", color = TextSecondary, fontSize = 13.sp)
+                        Text("Reading & running offline OCR…", color = TextSecondary, fontSize = 13.sp)
                     }
-                } else if (isPdfAttached || selectedImageBitmap != null) {
-                    // Attachment preview row
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(CinemaElevated)
-                            .border(0.8.dp, CinemaStroke, RoundedCornerShape(14.dp))
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier.size(58.dp).clip(RoundedCornerShape(10.dp)).background(CinemaSurface),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selectedImageBitmap != null) {
-                                Image(
-                                    bitmap = selectedImageBitmap!!.asImageBitmap(),
-                                    contentDescription = null,
-                                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFFFF4444), modifier = Modifier.size(28.dp))
+                } else if (attachedBitmaps.isNotEmpty()) {
+                    // Render current page previews
+                    Column {
+                        attachedBitmaps.forEachIndexed { index, bitmap ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(CinemaElevated)
+                                    .border(0.8.dp, CinemaStroke, RoundedCornerShape(14.dp))
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(58.dp).clip(RoundedCornerShape(10.dp)).background(CinemaSurface),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isPdfAttached) {
+                                        Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFFFF4444), modifier = Modifier.size(28.dp))
+                                    } else {
+                                        Image(
+                                            bitmap = bitmap.asImageBitmap(),
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(10.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.width(14.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = if (index == 0) "Front Side (Page 1)" else "Back Side (Page 2)",
+                                        color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp
+                                    )
+                                    Text("Ready for merge", color = AccentEmerald, fontSize = 11.sp)
+                                }
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
-                        Spacer(modifier = Modifier.width(14.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                if (isPdfAttached) "PDF Attached" else "Image Attached",
-                                color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp
-                            )
-                            Text(
-                                text = if (ocrTextResult != null) "Text extracted (${ocrTextResult!!.length} chars)" else "No text extracted",
-                                color = if (ocrTextResult != null) AccentEmerald else TextMuted,
-                                fontSize = 11.sp
-                            )
-                        }
-                        IconButton(onClick = {
-                            selectedImageBitmap = null
-                            selectedImageBytes = null
-                            isPdfAttached = false
-                            ocrTextResult = null
-                        }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.Close, contentDescription = "Remove", tint = TextSecondary, modifier = Modifier.size(16.dp))
+
+                        // Remove attachment controls
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            TextButton(
+                                onClick = {
+                                    attachedBitmaps.clear()
+                                    isPdfAttached = false
+                                    pdfBytes = null
+                                    ocrTextResult = null
+                                },
+                                colors = ButtonDefaults.textButtonColors(contentColor = AccentRed)
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Remove all pages", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 } else {
-                    // Empty attachment upload zone
+                    // Empty state upload container
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(90.dp)
+                            .height(85.dp)
                             .clip(RoundedCornerShape(14.dp))
                             .background(CinemaElevated)
-                            .border(
-                                width = 1.dp,
-                                brush = Brush.linearGradient(listOf(CinemaStroke, CinemaStroke)),
-                                shape = RoundedCornerShape(14.dp)
-                            ),
+                            .border(0.8.dp, CinemaStroke, RoundedCornerShape(14.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.UploadFile, contentDescription = null, tint = TextMuted, modifier = Modifier.size(26.dp))
+                            Icon(Icons.Default.UploadFile, contentDescription = null, tint = TextMuted, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("Scan, photo or PDF to auto-fill", color = TextMuted, fontSize = 12.sp)
+                            Text("No scan or file attached", color = TextMuted, fontSize = 12.sp)
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Attachment action row
+                // Upload controls
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        Triple(Icons.Default.DocumentScanner, "Scan", { launchScanner() }),
-                        Triple(Icons.Default.PhotoLibrary, "Gallery", {
-                            MainActivity.isLaunchingSystemIntent = true
-                            galleryLauncher.launch("image/*")
-                        }),
-                        Triple(Icons.Default.Description, "PDF", {
-                            MainActivity.isLaunchingSystemIntent = true
-                            pdfLauncher.launch("application/pdf")
-                        })
-                    ).forEach { (icon, label, action) ->
+                    val label = if (attachedBitmaps.isEmpty()) "Scan Document" else "Add Back Scan"
+                    val galleryLabel = if (attachedBitmaps.isEmpty()) "Gallery Photo" else "Add Back Photo"
+                    
+                    if (attachedBitmaps.size < 2 && !isPdfAttached) {
                         OutlinedButton(
-                            onClick = { action() },
-                            modifier = Modifier.weight(1f).height(42.dp),
+                            onClick = { launchScanner() },
+                            modifier = Modifier.weight(1.2f).height(40.dp),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = accentColor),
                             border = androidx.compose.foundation.BorderStroke(0.8.dp, accentColor.copy(alpha = 0.4f)),
                             contentPadding = PaddingValues(4.dp)
                         ) {
-                            Icon(icon, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Icon(Icons.Default.DocumentScanner, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text(label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                MainActivity.isLaunchingSystemIntent = true
+                                galleryLauncher.launch("image/*")
+                            },
+                            modifier = Modifier.weight(1.2f).height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = accentColor),
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, accentColor.copy(alpha = 0.4f)),
+                            contentPadding = PaddingValues(4.dp)
+                        ) {
+                            Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(galleryLabel, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    if (attachedBitmaps.isEmpty()) {
+                        OutlinedButton(
+                            onClick = {
+                                MainActivity.isLaunchingSystemIntent = true
+                                pdfLauncher.launch("application/pdf")
+                            },
+                            modifier = Modifier.weight(0.8f).height(40.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = accentColor),
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, accentColor.copy(alpha = 0.4f)),
+                            contentPadding = PaddingValues(4.dp)
+                        ) {
+                            Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("PDF File", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
@@ -635,7 +816,7 @@ fun AddDocumentScreen(
                             onValueChange = { input ->
                                 val cleaned = input.filter { it.isDigit() }
                                 if (cleaned.length <= 16) {
-                                    cardNumber = cleaned.chunked(4).joinToString(" ")
+                                    cardNumber = cleaned
                                     cardType = when (cleaned.firstOrNull()) {
                                         '4' -> "Visa"; '5' -> "Mastercard"; '3' -> "Amex"; '6' -> "RuPay"; else -> "Visa"
                                     }
@@ -643,7 +824,8 @@ fun AddDocumentScreen(
                             },
                             label = "Card Number",
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            accentColor = accentColor
+                            accentColor = accentColor,
+                            visualTransformation = CreditCardFilter()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         VaultTextField(value = cardholderName, onValueChange = { cardholderName = it }, label = "Cardholder Name",
@@ -655,14 +837,15 @@ fun AddDocumentScreen(
                                 onValueChange = { input ->
                                     val cleaned = input.filter { it.isDigit() }
                                     if (cleaned.length <= 4) {
-                                        cardExpiry = if (cleaned.length >= 3) cleaned.substring(0, 2) + "/" + cleaned.substring(2) else cleaned
+                                        cardExpiry = cleaned
                                     }
                                 },
                                 label = "Expiry (MM/YY)",
                                 placeholder = "MM/YY",
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.weight(1f),
-                                accentColor = accentColor
+                                accentColor = accentColor,
+                                visualTransformation = ExpiryDateFilter()
                             )
                             VaultTextField(
                                 value = cardCvv,
@@ -695,11 +878,14 @@ fun AddDocumentScreen(
                             value = aadhaarNumber,
                             onValueChange = { input ->
                                 val cleaned = input.filter { it.isDigit() }
-                                if (cleaned.length <= 12) aadhaarNumber = cleaned.chunked(4).joinToString(" ")
+                                if (cleaned.length <= 12) {
+                                    aadhaarNumber = cleaned
+                                }
                             },
                             label = "Aadhaar Number",
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            accentColor = accentColor
+                            accentColor = accentColor,
+                            visualTransformation = AadhaarFilter()
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         VaultTextField(value = aadhaarName, onValueChange = { aadhaarName = it }, label = "Full Name",
@@ -766,7 +952,7 @@ fun AddDocumentScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
                 // ── Save Button ───────────────────────────────────────────
                 Button(
@@ -781,14 +967,26 @@ fun AddDocumentScreen(
                             showErrorAlert = true
                         } else {
                             val extension = when {
-                                isPdfAttached -> "pdf"
-                                selectedImageBitmap != null -> "png"
+                                isPdfAttached || attachedBitmaps.size > 1 -> "pdf"
+                                attachedBitmaps.size == 1 -> "png"
+                                else -> null
+                            }
+                            val finalBytes = when {
+                                isPdfAttached -> pdfBytes
+                                attachedBitmaps.size > 1 -> createPdfFromBitmaps(attachedBitmaps)
+                                attachedBitmaps.size == 1 -> {
+                                    val stream = java.io.ByteArrayOutputStream()
+                                    attachedBitmaps.first().compress(Bitmap.CompressFormat.PNG, 100, stream)
+                                    stream.toByteArray()
+                                }
                                 else -> null
                             }
                             val doc = VaultDocument(
                                 id = documentToEdit?.id ?: UUID.randomUUID().toString(),
                                 title = title.trim(),
                                 type = documentType,
+                                dateAdded = documentToEdit?.dateAdded ?: System.currentTimeMillis(),
+                                cardColorIndex = documentToEdit?.cardColorIndex ?: java.util.Random().nextInt(5),
                                 dlNumber = dlNumber.trim(), dlHolderName = dlHolderName.trim(),
                                 dlDob = dlDob.trim(), dlExpiry = dlExpiry.trim(), dlState = dlState.trim(),
                                 rcNumber = rcNumber.trim(), rcOwnerName = rcOwnerName.trim(),
@@ -798,10 +996,11 @@ fun AddDocumentScreen(
                                 panNumber = panNumber.trim(), panName = panName.trim(),
                                 panFatherName = panFatherName.trim(), panDob = panDob.trim(),
                                 cardNumber = cardNumber.replace(" ", ""), cardholderName = cardholderName.trim(),
-                                cardExpiry = cardExpiry.trim(), cardCvv = cardCvv.trim(), cardType = cardType,
+                                cardExpiry = if (cardExpiry.length == 4) cardExpiry.take(2) + "/" + cardExpiry.drop(2) else cardExpiry.trim(),
+                                cardCvv = cardCvv.trim(), cardType = cardType,
                                 ocrText = ocrTextResult ?: documentToEdit?.ocrText
                             )
-                            onSave(doc, selectedImageBytes, extension)
+                            onSave(doc, finalBytes, extension)
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -864,7 +1063,8 @@ private fun VaultTextField(
     modifier: Modifier = Modifier.fillMaxWidth(),
     readOnly: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null,
-    accentColor: Color = AccentIndigo
+    accentColor: Color = AccentIndigo,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     OutlinedTextField(
         value = value,
@@ -875,6 +1075,7 @@ private fun VaultTextField(
         readOnly = readOnly,
         trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions,
+        visualTransformation = visualTransformation,
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
@@ -913,7 +1114,10 @@ private fun validateInputs(
             val cleaned = cardNum.replace(" ", "")
             if (cleaned.length < 13 || cleaned.length > 19) return "Card number must be 13-19 digits."
             if (cardName.trim().isEmpty()) return "Cardholder name is required."
-            if (!cardExp.contains("/")) return "Expiry must be MM/YY format."
+            val expDigits = cardExp.filter { it.isDigit() }
+            if (expDigits.length != 4) return "Expiry must be MM/YY format."
+            val month = expDigits.take(2).toIntOrNull() ?: 0
+            if (month < 1 || month > 12) return "Expiry month must be between 01 and 12."
             if (cardCvv.length < 3) return "CVV must be at least 3 digits."
         }
         DocumentType.AADHAAR_CARD -> {
@@ -934,4 +1138,80 @@ private fun validateInputs(
         }
     }
     return null
+}
+
+class AadhaarFilter : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = text.text
+        var out = ""
+        for (i in trimmed.indices) {
+            out += trimmed[i]
+            if (i % 4 == 3 && i != trimmed.lastIndex) {
+                out += " "
+            }
+        }
+        val offsetTranslator = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 0) return offset
+                val spaces = (offset - 1) / 4
+                return offset + spaces
+            }
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 0) return offset
+                val spaces = offset / 5
+                return offset - spaces
+            }
+        }
+        return TransformedText(AnnotatedString(out), offsetTranslator)
+    }
+}
+
+class CreditCardFilter : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = text.text
+        var out = ""
+        for (i in trimmed.indices) {
+            out += trimmed[i]
+            if (i % 4 == 3 && i != trimmed.lastIndex) {
+                out += " "
+            }
+        }
+        val offsetTranslator = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 0) return offset
+                val spaces = (offset - 1) / 4
+                return offset + spaces
+            }
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 0) return offset
+                val spaces = offset / 5
+                return offset - spaces
+            }
+        }
+        return TransformedText(AnnotatedString(out), offsetTranslator)
+    }
+}
+
+class ExpiryDateFilter : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val trimmed = text.text
+        var out = ""
+        for (i in trimmed.indices) {
+            out += trimmed[i]
+            if (i == 1 && i != trimmed.lastIndex) {
+                out += "/"
+            }
+        }
+        val offsetTranslator = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int {
+                if (offset <= 2) return offset
+                return offset + 1
+            }
+            override fun transformedToOriginal(offset: Int): Int {
+                if (offset <= 2) return offset
+                return offset - 1
+            }
+        }
+        return TransformedText(AnnotatedString(out), offsetTranslator)
+    }
 }

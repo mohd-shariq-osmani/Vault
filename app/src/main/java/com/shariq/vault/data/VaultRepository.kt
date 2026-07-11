@@ -63,6 +63,7 @@ class VaultRepository(
         val currentList = loadDocuments().toMutableList()
         val doc = currentList.find { it.id == documentId }
         doc?.imagePath?.let { deleteEncryptedImage(it) }
+        doc?.backImagePath?.let { deleteEncryptedImage(it) }
         currentList.removeAll { it.id == documentId }
         saveDocuments(currentList)
     }

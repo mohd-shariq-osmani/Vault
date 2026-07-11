@@ -13,6 +13,7 @@ data class VaultDocument(
     val title: String,
     val type: DocumentType,
     val dateAdded: Long = System.currentTimeMillis(),
+    val cardColorIndex: Int = 0,
     
     // Drivers License fields
     val dlNumber: String? = null,
@@ -49,5 +50,6 @@ data class VaultDocument(
     
     // Scanned Image and OCR fields
     val imagePath: String? = null,
+    val backImagePath: String? = null,
     val ocrText: String? = null
 )

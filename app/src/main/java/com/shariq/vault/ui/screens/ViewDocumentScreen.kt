@@ -53,12 +53,14 @@ fun ViewDocumentScreen(
     val context = LocalContext.current
     var isRevealed by remember { mutableStateOf(true) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var decryptedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    val decryptedBitmaps = remember { mutableStateListOf<Bitmap>() }
     var isImageLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(document.imagePath) {
         document.imagePath?.let { path ->
             isImageLoading = true
+            decryptedBitmaps.clear()
             val bytes = onLoadImage(path)
             if (bytes != null) {
                 try {
@@ -68,38 +70,45 @@ fun ViewDocumentScreen(
                         }
                         val pfd = android.os.ParcelFileDescriptor.open(tempFile, android.os.ParcelFileDescriptor.MODE_READ_ONLY)
                         val renderer = PdfRenderer(pfd)
-                        if (renderer.pageCount > 0) {
-                            val page = renderer.openPage(0)
+                        val pageCount = minOf(renderer.pageCount, 1) // Only display the 1st page of the PDF in preview
+                        for (i in 0 until pageCount) {
+                            val page = renderer.openPage(i)
                             val bitmap = Bitmap.createBitmap(page.width * 2, page.height * 2, Bitmap.Config.ARGB_8888)
                             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                            decryptedBitmap = bitmap
+                            decryptedBitmaps.add(bitmap)
                             page.close()
                         }
                         renderer.close(); pfd.close(); tempFile.delete()
                     } else {
-                        decryptedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        if (bitmap != null) {
+                            decryptedBitmaps.add(bitmap)
+                        }
                     }
                 } catch (e: Exception) { e.printStackTrace() }
             }
             isImageLoading = false
-        }
+        } ?: run { decryptedBitmaps.clear() }
     }
 
-    val gradient = when (document.type) {
-        DocumentType.PAYMENT_CARD    -> CardGradientBluePurple
-        DocumentType.AADHAAR_CARD    -> CardGradientEmerald
-        DocumentType.PAN_CARD        -> CardGradientSunset
-        DocumentType.DRIVERS_LICENSE -> CardGradientDeepSpace
-        DocumentType.VEHICLE_RC      -> CardGradientDarkPurple
-    }
+    val gradients = listOf(
+        CardGradientBluePurple,
+        CardGradientEmerald,
+        CardGradientSunset,
+        CardGradientDeepSpace,
+        CardGradientDarkPurple
+    )
+    val colorIndex = kotlin.math.abs(document.id.hashCode()) % gradients.size
+    val gradient = gradients[colorIndex]
 
-    val accentColor = when (document.type) {
-        DocumentType.PAYMENT_CARD    -> AccentIndigo
-        DocumentType.AADHAAR_CARD    -> AccentEmerald
-        DocumentType.PAN_CARD        -> Color(0xFFFF9F00)
-        DocumentType.DRIVERS_LICENSE -> AccentIndigo
-        DocumentType.VEHICLE_RC      -> Color(0xFF9D6FFF)
-    }
+    val accentColors = listOf(
+        AccentIndigo,
+        AccentEmerald,
+        Color(0xFFFF9F00),
+        AccentIndigo,
+        Color(0xFF9D6FFF)
+    )
+    val accentColor = accentColors[colorIndex]
 
     val typeIcon = when (document.type) {
         DocumentType.PAYMENT_CARD    -> Icons.Default.CreditCard
@@ -172,7 +181,6 @@ fun ViewDocumentScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Back button
                     IconButton(
                         onClick = onBack,
                         modifier = Modifier
@@ -185,7 +193,6 @@ fun ViewDocumentScreen(
 
                     Spacer(modifier = Modifier.width(12.dp))
 
-                    // Type pill + title
                     Column(modifier = Modifier.weight(1f)) {
                         Box(
                             modifier = Modifier
@@ -199,7 +206,6 @@ fun ViewDocumentScreen(
                         Text(document.title, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = TextPrimary, maxLines = 1)
                     }
 
-                    // Action icons
                     Row {
                         IconButton(
                             onClick = { isRevealed = !isRevealed },
@@ -264,7 +270,6 @@ fun ViewDocumentScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Primary number with copy icon
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = displayedPrimaryNumber,
@@ -285,7 +290,6 @@ fun ViewDocumentScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Footer: name + validity
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column {
                             Text("NAME", fontSize = 8.sp, color = Color.White.copy(alpha = 0.55f), letterSpacing = 1.sp)
@@ -318,78 +322,60 @@ fun ViewDocumentScreen(
                     }
                 }
 
-                // ── Document Attachment Preview ───────────────────────────
-                document.imagePath?.let { path ->
-                    val isPdf = path.endsWith(".pdf")
+                // ── Document Attachment Previews ─────────────────────────
+                if (decryptedBitmaps.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Section header
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(3.dp, 14.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(accentColor)
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(3.dp, 14.dp).clip(RoundedCornerShape(2.dp)).background(accentColor))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isPdf) "Document Preview" else "Scan Preview",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
-                            letterSpacing = 0.3.sp
-                        )
+                        Text("Scanned Attachments", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(CinemaElevated)
-                            .border(0.8.dp, CinemaStroke, RoundedCornerShape(16.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isImageLoading) {
-                            CircularProgressIndicator(color = accentColor, strokeWidth = 2.dp)
-                        } else if (decryptedBitmap != null) {
-                            if (isRevealed) {
-                                Image(
-                                    bitmap = decryptedBitmap!!.asImageBitmap(),
-                                    contentDescription = "Document Scan",
-                                    modifier = Modifier.fillMaxSize().padding(8.dp),
-                                    contentScale = ContentScale.Fit
-                                )
+                    decryptedBitmaps.forEachIndexed { index, bitmap ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        if (decryptedBitmaps.size > 1) {
+                            Text("PAGE ${index + 1}", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextSecondary, letterSpacing = 1.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(CinemaElevated)
+                                .border(0.8.dp, CinemaStroke, RoundedCornerShape(16.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isImageLoading) {
+                                CircularProgressIndicator(color = accentColor, strokeWidth = 2.dp)
                             } else {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
-                                    Icon(Icons.Default.VisibilityOff, contentDescription = null, tint = TextMuted, modifier = Modifier.size(40.dp))
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Text("Scan hidden", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                                    Text("Tap the eye icon to reveal", color = TextMuted, fontSize = 11.sp, textAlign = TextAlign.Center)
+                                if (isRevealed) {
+                                    Image(
+                                        bitmap = bitmap.asImageBitmap(),
+                                        contentDescription = "Page ${index + 1}",
+                                        modifier = Modifier.fillMaxSize().padding(8.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                } else {
+                                    HiddenPreviewPrompt()
                                 }
                             }
-                        } else {
-                            Text("Could not load preview", color = TextMuted, fontSize = 12.sp)
                         }
                     }
 
-                    if (isPdf) {
-                        Spacer(modifier = Modifier.height(10.dp))
+                    if (document.imagePath?.endsWith(".pdf") == true) {
+                        Spacer(modifier = Modifier.height(12.dp))
                         OutlinedButton(
-                            onClick = { openPdfAttachment(context, path, onLoadImage) },
-                            modifier = Modifier.fillMaxWidth().height(46.dp),
+                            onClick = { openPdfAttachment(context, document.imagePath!!, document.title, onLoadImage) },
+                            modifier = Modifier.fillMaxWidth().height(42.dp),
                             shape = RoundedCornerShape(12.dp),
                             border = androidx.compose.foundation.BorderStroke(0.8.dp, accentColor.copy(alpha = 0.5f)),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = accentColor)
                         ) {
                             Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Open Full PDF", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text("Open PDF", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         }
                     }
                 }
@@ -451,38 +437,17 @@ fun ViewDocumentScreen(
                     }
                 }
 
-                // ── OCR Raw Text ─────────────────────────────────────────
-                document.ocrText?.let { ocr ->
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(3.dp, 14.dp).clip(RoundedCornerShape(2.dp)).background(accentColor))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Raw OCR Text", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        }
-                        IconButton(onClick = { copyToClipboard(context, "OCR Text", ocr) }, modifier = Modifier.size(32.dp)) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = accentColor, modifier = Modifier.size(16.dp))
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 180.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(CinemaSurface)
-                            .border(0.8.dp, CinemaStroke, RoundedCornerShape(14.dp))
-                            .padding(14.dp)
-                    ) {
-                        val ocrScroll = rememberScrollState()
-                        Column(modifier = Modifier.verticalScroll(ocrScroll)) {
-                            Text(ocr, fontSize = 12.sp, fontFamily = FontFamily.Monospace, color = TextSecondary, lineHeight = 17.sp)
-                        }
-                    }
+                // ── Share Option ─────────────────────────────────────────
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = { shareDocumentDetails(context, document) },
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = Color.White)
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Share Document Details", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
 
                 Spacer(modifier = Modifier.height(40.dp))
@@ -497,7 +462,7 @@ fun ViewDocumentScreen(
             title = { Text("Delete permanently?", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    "This will erase '${document.title}' and its encrypted file from your device. This cannot be undone.",
+                    "This will erase '${document.title}' and its encrypted files from your device. This cannot be undone.",
                     color = TextSecondary, lineHeight = 20.sp
                 )
             },
@@ -514,6 +479,16 @@ fun ViewDocumentScreen(
             containerColor = CinemaElevated,
             shape = RoundedCornerShape(20.dp)
         )
+    }
+}
+
+@Composable
+private fun HiddenPreviewPrompt() {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
+        Icon(Icons.Default.VisibilityOff, contentDescription = null, tint = TextMuted, modifier = Modifier.size(40.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+        Text("Scan hidden", color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text("Tap the eye icon to reveal", color = TextMuted, fontSize = 11.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -562,13 +537,14 @@ private fun copyToClipboard(context: Context, label: String, text: String) {
     Toast.makeText(context, "$label copied!", Toast.LENGTH_SHORT).show()
 }
 
-private fun openPdfAttachment(context: Context, fileName: String, onLoadImage: (String) -> ByteArray?) {
+private fun openPdfAttachment(context: Context, fileName: String, title: String, onLoadImage: (String) -> ByteArray?) {
     try {
         val bytes = onLoadImage(fileName) ?: run {
             Toast.makeText(context, "Could not load document", Toast.LENGTH_SHORT).show()
             return
         }
-        val tempFile = File(context.cacheDir, "decrypted_document.pdf").apply {
+        val safeTitle = title.replace("[\\\\/:*?\"<>|]".toRegex(), "_")
+        val tempFile = File(context.cacheDir, "$safeTitle.pdf").apply {
             writeBytes(bytes); deleteOnExit()
         }
         val uri = FileProvider.getUriForFile(context, "com.shariq.vault.fileprovider", tempFile)
@@ -582,4 +558,68 @@ private fun openPdfAttachment(context: Context, fileName: String, onLoadImage: (
         e.printStackTrace()
         Toast.makeText(context, "No PDF app available", Toast.LENGTH_SHORT).show()
     }
+}
+
+private fun shareDocumentDetails(context: Context, document: VaultDocument) {
+    val sb = StringBuilder()
+    val typeLabel = when (document.type) {
+        DocumentType.PAYMENT_CARD    -> document.cardType ?: "Payment Card"
+        DocumentType.AADHAAR_CARD    -> "Aadhaar Card"
+        DocumentType.PAN_CARD        -> "PAN Card"
+        DocumentType.DRIVERS_LICENSE -> "Driver's Licence"
+        DocumentType.VEHICLE_RC      -> "Vehicle RC"
+    }
+    sb.append("$typeLabel Details:\n")
+    sb.append("Title: ${document.title}\n")
+    
+    when (document.type) {
+        DocumentType.PAYMENT_CARD -> {
+            sb.append("Card Network: ${document.cardType ?: ""}\n")
+            sb.append("Cardholder Name: ${document.cardholderName ?: ""}\n")
+            sb.append("Card Number: ${document.cardNumber ?: ""}\n")
+            sb.append("Expiry Date: ${document.cardExpiry ?: ""}\n")
+            sb.append("CVV: ${document.cardCvv ?: ""}\n")
+        }
+        DocumentType.AADHAAR_CARD -> {
+            sb.append("Full Name: ${document.aadhaarName ?: ""}\n")
+            sb.append("Aadhaar Number: ${document.aadhaarNumber ?: ""}\n")
+            sb.append("Date of Birth: ${document.aadhaarDob ?: ""}\n")
+            sb.append("Gender: ${document.aadhaarGender ?: ""}\n")
+        }
+        DocumentType.PAN_CARD -> {
+            sb.append("Full Name: ${document.panName ?: ""}\n")
+            sb.append("PAN Number: ${document.panNumber ?: ""}\n")
+            sb.append("Father's Name: ${document.panFatherName ?: ""}\n")
+            sb.append("Date of Birth: ${document.panDob ?: ""}\n")
+        }
+        DocumentType.DRIVERS_LICENSE -> {
+            sb.append("Holder Name: ${document.dlHolderName ?: ""}\n")
+            sb.append("Licence Number: ${document.dlNumber ?: ""}\n")
+            sb.append("Date of Birth: ${document.dlDob ?: ""}\n")
+            sb.append("Expiry Date: ${document.dlExpiry ?: ""}\n")
+            sb.append("Issuing State: ${document.dlState ?: ""}\n")
+        }
+        DocumentType.VEHICLE_RC -> {
+            sb.append("Registration Number: ${document.rcNumber ?: ""}\n")
+            sb.append("Registered Owner: ${document.rcOwnerName ?: ""}\n")
+            sb.append("Chassis Number: ${document.rcChassisNumber ?: ""}\n")
+            sb.append("Engine Number: ${document.rcEngineNumber ?: ""}\n")
+            sb.append("Registration Expiry: ${document.rcExpiry ?: ""}\n")
+        }
+    }
+    
+    val text = sb.toString().trim()
+    
+    // 1. Copy to clipboard
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("Document Details", text))
+    Toast.makeText(context, "Details copied to clipboard!", Toast.LENGTH_SHORT).show()
+    
+    // 2. Trigger native share sheet
+    val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(android.content.Intent.EXTRA_SUBJECT, "${document.title} Details")
+        putExtra(android.content.Intent.EXTRA_TEXT, text)
+    }
+    context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Document Details"))
 }

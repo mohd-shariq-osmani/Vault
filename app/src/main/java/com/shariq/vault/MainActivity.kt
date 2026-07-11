@@ -238,6 +238,17 @@ class MainActivity : FragmentActivity() {
                         repository.deleteDocument(id)
                         documents.clear()
                         documents.addAll(repository.loadDocuments())
+                    },
+                    onMoveDocument = { id, moveUp ->
+                        val index = documents.indexOfFirst { it.id == id }
+                        if (index != -1) {
+                            val newIndex = if (moveUp) index - 1 else index + 1
+                            if (newIndex in 0 until documents.size) {
+                                val item = documents.removeAt(index)
+                                documents.add(newIndex, item)
+                                repository.saveDocuments(documents)
+                            }
+                        }
                     }
                 )
             }
@@ -250,23 +261,27 @@ class MainActivity : FragmentActivity() {
                         onSave = { doc, imageBytes, extension ->
                             var finalDoc = doc
                             val docToEdit = selectedDocToEdit
+                            
                             if (imageBytes != null && extension != null) {
-                                // If editing and a new file was scanned/selected, delete the old file
                                 docToEdit?.imagePath?.let { oldPath ->
+                                    repository.deleteEncryptedImage(oldPath)
+                                }
+                                docToEdit?.backImagePath?.let { oldPath ->
                                     repository.deleteEncryptedImage(oldPath)
                                 }
                                 val imgFileName = "file_${java.util.UUID.randomUUID()}.$extension"
                                 repository.saveEncryptedImage(imgFileName, imageBytes)
-                                finalDoc = doc.copy(imagePath = imgFileName)
+                                finalDoc = finalDoc.copy(imagePath = imgFileName, backImagePath = null)
                             } else if (docToEdit != null && docToEdit.imagePath != null && imageBytes == null && extension == null) {
-                                // User explicitly removed the attachment
                                 docToEdit.imagePath?.let { oldPath ->
                                     repository.deleteEncryptedImage(oldPath)
                                 }
-                                finalDoc = doc.copy(imagePath = null)
+                                docToEdit.backImagePath?.let { oldPath ->
+                                    repository.deleteEncryptedImage(oldPath)
+                                }
+                                finalDoc = finalDoc.copy(imagePath = null, backImagePath = null)
                             } else if (docToEdit != null) {
-                                // Preserve old attachment
-                                finalDoc = doc.copy(imagePath = docToEdit.imagePath)
+                                finalDoc = finalDoc.copy(imagePath = docToEdit.imagePath, backImagePath = docToEdit.backImagePath)
                             }
 
                             if (docToEdit != null) {

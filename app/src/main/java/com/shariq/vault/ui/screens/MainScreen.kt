@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -25,6 +26,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -46,12 +48,14 @@ fun MainScreen(
     documents: List<VaultDocument>,
     onAddDocumentClicked: (DocumentType) -> Unit,
     onDocumentClicked: (String) -> Unit,
-    onDeleteDocument: (String) -> Unit
+    onDeleteDocument: (String) -> Unit,
+    onMoveDocument: (String, Boolean) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("All") }
     var showAddMenu by remember { mutableStateOf(false) }
     var documentToDelete by remember { mutableStateOf<VaultDocument?>(null) }
+    var isReorderMode by remember { mutableStateOf(false) }
 
     data class Category(val label: String, val icon: ImageVector)
     val categories = listOf(
@@ -76,9 +80,9 @@ fun MainScreen(
                     "All" -> true
                     "Cards" -> doc.type == DocumentType.PAYMENT_CARD
                     "IDs" -> doc.type == DocumentType.AADHAAR_CARD ||
-                              doc.type == DocumentType.PAN_CARD ||
-                              doc.type == DocumentType.DRIVERS_LICENSE
-                    "Vehicle" -> doc.type == DocumentType.VEHICLE_RC
+                              doc.type == DocumentType.PAN_CARD
+                    "Vehicle" -> doc.type == DocumentType.VEHICLE_RC ||
+                                  doc.type == DocumentType.DRIVERS_LICENSE
                     else -> true
                 }
                 matchesSearch && matchesCategory
@@ -142,7 +146,7 @@ fun MainScreen(
                 .padding(paddingValues)
         ) {
 
-            // ── Premium Header ───────────────────────────────────────────
+            // ── Premium Header (Cleaned up empty space using drawBehind for glow) ──
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -151,23 +155,26 @@ fun MainScreen(
                             colors = listOf(CinemaElevated, CinemaBase)
                         )
                     )
-                    .padding(horizontal = 24.dp, vertical = 20.dp)
-            ) {
-                // Subtle ambient blob
-                Box(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .align(Alignment.TopEnd)
-                        .offset(x = 20.dp, y = (-20).dp)
-                        .background(
+                    .drawBehind {
+                        // Ambient glow drawn on canvas to not occupy layout space
+                        drawCircle(
                             brush = Brush.radialGradient(
-                                colors = listOf(AccentGlow, Color.Transparent)
-                            ),
-                            shape = CircleShape
+                                colors = listOf(AccentGlow, Color.Transparent),
+                                center = androidx.compose.ui.geometry.Offset(
+                                    x = size.width + 10.dp.toPx(),
+                                    y = -10.dp.toPx()
+                                ),
+                                radius = 120.dp.toPx()
+                            )
                         )
-                )
+                    }
+                    .padding(horizontal = 24.dp, vertical = 16.dp)
+            ) {
                 Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
@@ -187,8 +194,24 @@ fun MainScreen(
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 22.sp,
                             letterSpacing = 4.sp,
-                            color = TextPrimary
+                            color = TextPrimary,
+                            modifier = Modifier.weight(1f)
                         )
+                        // Reorder mode toggle button
+                        IconButton(
+                            onClick = { isReorderMode = !isReorderMode },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (isReorderMode) AccentIndigo.copy(alpha = 0.2f) else Color.Transparent)
+                        ) {
+                            Icon(
+                                imageVector = if (isReorderMode) Icons.Default.Check else Icons.Default.Sort,
+                                contentDescription = "Reorder Items",
+                                tint = if (isReorderMode) AccentIndigo else TextSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -210,7 +233,7 @@ fun MainScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
 
@@ -360,6 +383,9 @@ fun MainScreen(
                         ) {
                             DocumentItem(
                                 document = doc,
+                                isReorderMode = isReorderMode,
+                                onMoveUp = { onMoveDocument(doc.id, true) },
+                                onMoveDown = { onMoveDocument(doc.id, false) },
                                 onClick = { onDocumentClicked(doc.id) },
                                 onLongClick = { documentToDelete = doc }
                             )
@@ -407,16 +433,21 @@ fun MainScreen(
 @Composable
 fun DocumentItem(
     document: VaultDocument,
+    isReorderMode: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    val gradient = when (document.type) {
-        DocumentType.PAYMENT_CARD -> CardGradientBluePurple
-        DocumentType.AADHAAR_CARD -> CardGradientEmerald
-        DocumentType.PAN_CARD -> CardGradientSunset
-        DocumentType.DRIVERS_LICENSE -> CardGradientDeepSpace
-        DocumentType.VEHICLE_RC -> CardGradientDarkPurple
-    }
+    val gradients = listOf(
+        CardGradientBluePurple,
+        CardGradientEmerald,
+        CardGradientSunset,
+        CardGradientDeepSpace,
+        CardGradientDarkPurple
+    )
+    val colorIndex = kotlin.math.abs(document.id.hashCode()) % gradients.size
+    val gradient = gradients[colorIndex]
 
     val typeIcon = when (document.type) {
         DocumentType.PAYMENT_CARD -> Icons.Default.CreditCard
@@ -481,7 +512,7 @@ fun DocumentItem(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
             // Type badge chip
             Box(
@@ -498,20 +529,60 @@ fun DocumentItem(
                     color = Color.White.copy(alpha = 0.85f)
                 )
             }
-            // Document type icon
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.10f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = typeIcon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
+
+            // Reorder controls or type icon
+            if (isReorderMode) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.15f))
+                            .clickable(onClick = onMoveUp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowUpward,
+                            contentDescription = "Move Up",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.15f))
+                            .clickable(onClick = onMoveDown),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowDownward,
+                            contentDescription = "Move Down",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            } else {
+                // Document type icon
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = typeIcon,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 
