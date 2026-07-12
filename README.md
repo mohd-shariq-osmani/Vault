@@ -1,78 +1,90 @@
-# Vault 🔒
+# Secure Document Vault 🔒
 
-Vault is a modern, premium, secure Android application built with Jetpack Compose. It allows you to store your private personal documents (Aadhaar Cards, PAN Cards, Driving Licenses, Vehicle RCs, Credit/Debit cards) locally on your device with hardware-backed encryption. 
+This repository contains two implementations of the secure local document vault:
+1. **Flutter Implementation (Multi-Platform)**: Located in the [`VaultFlutter/`](./VaultFlutter) folder. Supports Android, iOS, and macOS.
+2. **Native Android Compose Implementation**: Located in the root folder. Supports Android.
 
-Vault is designed for **100% offline privacy**—it requires zero network permissions, ensuring your sensitive data never leaves your device.
-
----
-
-## Key Features
-
-*   **Hardware-Backed Encryption**: Vault serializes all document details and local scans using AES-256-GCM encryption. The cryptographic keys are managed securely by the Android Keystore system.
-*   **Biometric Access Control**: Prompt biometric (fingerprint/face) unlock screen on startup. The app automatically locks itself when paused, backgrounded, or when the screen is turned off.
-*   **Integrated Document Scanner**: Native integration with the Google Play services Document Scanner API. It automatically detects document edges, crops, aligns, and scans card layouts directly into high-res PDF files.
-*   **Smart Offline OCR & Auto-Fill**: Parses scanned text offline using Google ML Kit. It uses smart line-cleansing and alphabetical heuristics to extract names, father's names, dates of birth, and card numbers, auto-filling input fields in real time.
-*   **Visual PDF & Image Previews**: View decrypted image scans or native visual previews of PDF files (rendering Page 1 inline) instantly upon opening. PDF attachments can be decrypted on-the-fly and launched in external system viewers.
-*   **Dynamic Obsidian Theme**: Styled in a modern glassmorphic theme featuring deep obsidian black surfaces, cyberpunk cyan accents, and glowing, borderless status cards.
+Both applications are designed for **100% offline privacy**—requiring zero network permissions to guarantee that your sensitive documents never leave your device.
 
 ---
 
-## Tech Stack & Architecture
+## 📱 Flutter Implementation (Multi-Platform)
 
-*   **UI Framework**: Jetpack Compose (Kotlin-first declarative UI)
-*   **Database / Storage**: Encrypted File System JSON Serialization & Binary File Storage
-*   **Cryptography**: `androidx.security:security-crypto` & Android Keystore API (AES-GCM-256)
-*   **Machine Learning (OCR)**: Google ML Kit Text Recognition (`com.google.mlkit:text-recognition`)
-*   **Scanning UI**: Google Play services Document Scanner (`play-services-mlkit-document-scanner`)
-*   **Build System**: Gradle Kotlin DSL (`.gradle.kts`) targeting Android SDK 35 (Java 17)
+The Flutter app is located under [`VaultFlutter/`](./VaultFlutter) and supports Android, iOS, and macOS with full AES-256-GCM local encryption.
 
----
+### Key Features
+*   **Biometric & Device Authentication**: Strictly enforces fingerprint/FaceID locks. If no device lock credentials are set up on the phone, it safely bypasses lockouts.
+*   **Native ML Kit Document Scanner (Mobile)**: Multi-page scanning interface using the Google Play services Document Scanner API.
+*   **Image & PDF Picker (Mobile/Desktop)**: Upload multi-page PDFs or images. PDFs are parsed page-by-page as image previews and can be re-compiled into single attachments.
+*   **Offline Heuristic OCR**: Local OCR autofills card numbers, names, expiry dates, CVVs, and dates of birth.
+*   **Platform File Previews**: Decrypts attachments on-the-fly and opens them using the native OS viewer under their custom titles (e.g. `[Title].pdf`).
 
-## Installation & Setup
+### How to Install & Run
 
-1.  **Clone the Repository**:
+#### 1. Android Installation
+1. Ensure your Flutter environment is set up.
+2. Run `flutter pub get` in `VaultFlutter/`.
+3. Connect your Android device (ensure Developer Options and USB debugging are enabled).
+4. Run:
+   ```bash
+   flutter run -d <device_id>
+   ```
+   Or build the debug APK:
+   ```bash
+   flutter build apk --debug
+   ```
+
+#### 2. iOS Installation (Xcode)
+1. Navigate to the `VaultFlutter/ios/` directory and install Cocoapods dependencies:
+   ```bash
+   cd VaultFlutter/ios
+   pod install
+   ```
+2. Open the project workspace in Xcode:
+   ```bash
+   open Runner.xcworkspace
+   ```
+3. Connect your iPhone and select it as the run target.
+4. Set your development team under **Runner > Signing & Capabilities**.
+5. Build and run the app.
+
+⚠️ **Xcode Build Error: `Command PhaseScriptExecution failed with a nonzero exit code`**
+If you encounter this error during iOS compile:
+*   **Disable User Script Sandboxing (Xcode 15+)**:
+    1. Select the **Runner** project in the Xcode left navigation sidebar.
+    2. Go to the **Build Settings** tab.
+    3. Search for **User Script Sandboxing** (or `ENABLE_USER_SCRIPT_SANDBOXING`).
+    4. Set it to **No**.
+*   **Configure Local Flutter Path**:
+    If Xcode cannot locate your Flutter binary, create `VaultFlutter/ios/.xcode.env.local` and add:
     ```bash
-    git clone https://github.com/mohd-shariq-osmani/Vault.git
-    cd Vault
+    export FLUTTER_ROOT="/opt/homebrew/share/flutter" # Adjust to your Flutter SDK path
     ```
-2.  **Open in Android Studio**:
-    *   Select **File > Open** and choose the `Vault` folder.
-    *   Allow Gradle to sync and download the Play Services dependencies.
-3.  **Run the Application**:
-    *   Connect your Android device via USB/Wi-Fi debugging.
-    *   Build and deploy the debug package (`app-debug.apk`).
-    *   Ensure your device has at least one fingerprint or screen lock set up for biometric authentication.
+
+#### 3. macOS Installation
+1. Ensure macOS desktop support is enabled in Flutter:
+   ```bash
+   flutter config --enable-macos-desktop
+   ```
+2. From the `VaultFlutter` folder, run:
+   ```bash
+   flutter run -d macos
+   ```
 
 ---
 
-## Project Structure
+## 🤖 Native Compose Implementation (Android)
 
-```text
-app/src/main/
-├── AndroidManifest.xml          # Sandboxed manifest requesting biometric & camera access
-├── java/com/shariq/vault/
-│   ├── MainActivity.kt          # Biometric lifecycle integration & screen navigation router
-│   ├── data/
-│   │   └── VaultRepository.kt   # Local load/save repository for encrypted files
-│   ├── model/
-│   │   └── Document.kt          # Data models mapping card details and attachments
-│   ├── security/
-│   │   └── CryptoManager.kt     # Hardware keystore wrapper for AES-GCM encryption
-│   └── ui/
-│       ├── theme/               # Obsidian Black and Cyber Cyan colors & typography
-│       ├── components/          # Custom Glassmorphic container widget
-│       └── screens/
-│           ├── MainScreen.kt    # Dashboard grid with search and category filters
-│           ├── AddDocumentScreen.kt # Scan inputs, OCR prefill heuristics, scanner launchers
-│           └── ViewDocumentScreen.kt # Details listing, decrypted previews, PDF viewer launcher
-└── res/
-    ├── mipmap-*/                # Custom Launcher icons
-    └── xml/                     # FileProvider sharing configs and secure backup rules
-```
+Located in the root of the repository. Styled in a glassmorphic cinema theme.
+
+### How to Install & Run
+1. Open the root `Vault` folder in Android Studio.
+2. Let Gradle sync and download Play Services ML Kit dependencies.
+3. Build and deploy the debug package to your device.
 
 ---
 
 ## Security & Privacy Policy
 
-*   **Zero Internet Permission**: The `AndroidManifest.xml` declares **no network permission** (`android.permission.INTERNET`). The app cannot communicate with any remote servers, preventing telemetry or credentials leak.
-*   **Decryption-in-Memory**: Encrypted scans and PDF attachments are decrypted on-the-fly inside local volatile RAM, and temporary files generated for system previews are instantly marked to delete on exit.
+*   **No Internet Permission**: Neither the Compose app nor the Flutter app declares network permissions. They cannot communicate with any remote servers.
+*   **Decryption-in-Memory**: Encrypted scans and PDF files are decrypted on-the-fly inside local volatile RAM, and temporary files generated for system previews are instantly marked to delete on exit.
