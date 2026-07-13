@@ -68,11 +68,11 @@ We have successfully implemented all fixes and features requested. The app build
 
 ---
 
-### 9. 🍏 iOS Xcode Sandboxing Fix
-- **Modified**: [project.pbxproj](file:///Users/shariq/Downloads/VaultFlutter/ios/Runner.xcodeproj/project.pbxproj)
+### 9. 🍏 iOS Xcode Sandboxing & Platform Target Fixes
+- **Modified**: [project.pbxproj](file:///Users/shariq/Downloads/VaultFlutter/ios/Runner.xcodeproj/project.pbxproj), [Podfile](file:///Users/shariq/Downloads/VaultFlutter/ios/Podfile)
 - **What was done**:
-  - Found that target-level overrides for `ENABLE_USER_SCRIPT_SANDBOXING` were explicitly set to `YES` for Debug, Release, and Profile target build configs.
-  - Set `ENABLE_USER_SCRIPT_SANDBOXING` to `NO` across all target configurations inside the Xcode project settings, allowing Cocoapods `rsync` scripts to compile properly.
+  - Found that target-level overrides for `ENABLE_USER_SCRIPT_SANDBOXING` were explicitly set to `YES` for Debug, Release, and Profile target build configs. Set them to `NO` across all target configurations inside the Xcode project settings, allowing Cocoapods `rsync` scripts to compile properly.
+  - Upgraded iOS minimum deployment target platform version from `13.0` to `15.0` in both the Podfile and Xcode project targets to satisfy `google_mlkit_document_scanner` dependencies requirements.
 
 ---
 
