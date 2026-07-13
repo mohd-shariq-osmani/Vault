@@ -1,97 +1,117 @@
 # Secure Document Vault 🔒
 
-This repository contains two implementations of the secure local document vault:
-1. **Flutter Implementation (Multi-Platform)**: Located in the [`VaultFlutter/`](./VaultFlutter) folder. Supports Android, iOS, and macOS.
-2. **Native Android Compose Implementation**: Located in the root folder. Supports Android.
+Vault is a modern, premium, secure local document vault application built with **Flutter**. It allows you to store private personal documents (Payment Cards, Aadhaar Cards, PAN Cards, Driving Licenses, Vehicle RCs, and Generic ID Cards) locally on your device with hardware-backed, military-grade AES-256-GCM local encryption.
 
-Both applications are designed for **100% offline privacy**—requiring zero network permissions to guarantee that your sensitive documents never leave your device.
+Vault is designed for **100% offline privacy**—it requires zero network permissions, ensuring your sensitive data never leaves your device.
 
 ---
 
-## 📱 Flutter Implementation (Multi-Platform)
+## Key Features
 
-The Flutter app is located under [`VaultFlutter/`](./VaultFlutter) and supports Android, iOS, and macOS with full AES-256-GCM local encryption.
+*   **AES-256-GCM Local Encryption**: Serializes all document details and local scans using synchronous AES-256-GCM encryption. Cryptographic keys are managed securely by the local platform secure storage (Android Keystore / iOS Keychain).
+*   **Biometric Access Control**: Strict biometric (fingerprint/FaceID) lock screen on app startup. Safe bypass fallback triggers if device-level lock credentials are completely turned off or disabled.
+*   **Integrated Multi-Page Document Scanner (Mobile)**: Native integration with the Google Play services Document Scanner API. It automatically detects edges, crops, aligns, and scans multiple pages into high-res PDF attachments.
+*   **Multi-Format File Picker (PDFs & Images)**: Supports uploading multiple images and PDF files. PDFs are rendered page-by-page as visual previews and can be re-compiled into single attachments.
+*   **Heuristic OCR & Autofill**: Offline text parser powered by Google ML Kit. Automatically extracts cardholders, card numbers, CVVs, names, father's names, dates of birth, and expiry dates to auto-fill forms.
+*   **Interactive Date Selectors**: Input fields for dates (DOBs, Expiries) are read-only to avoid typos, and open neat native visual Date Picker dialog overlays.
+*   **Decrypted Previews & Share Option**: View visual pages of attachments, or decrypt them on-the-fly to open in native external system viewers. Automatic clipboard copy + system sharing copies all document fields in one click.
+*   **Premium Obsidian Theme**: Styled in a dark glassmorphic cinema theme featuring deep obsidian black surfaces, indigo highlights, and custom categories navigation.
 
-### Key Features
-*   **Biometric & Device Authentication**: Strictly enforces fingerprint/FaceID locks. If no device lock credentials are set up on the phone, it safely bypasses lockouts.
-*   **Native ML Kit Document Scanner (Mobile)**: Multi-page scanning interface using the Google Play services Document Scanner API.
-*   **Image & PDF Picker (Mobile/Desktop)**: Upload multi-page PDFs or images. PDFs are parsed page-by-page as image previews and can be re-compiled into single attachments.
-*   **Offline Heuristic OCR**: Local OCR autofills card numbers, names, expiry dates, CVVs, and dates of birth.
-*   **Platform File Previews**: Decrypts attachments on-the-fly and opens them using the native OS viewer under their custom titles (e.g. `[Title].pdf`).
+---
 
-### How to Install & Run
+## Project Structure
 
-#### 1. Android Installation
-1. Ensure your Flutter environment is set up.
-2. Run `flutter pub get` in `VaultFlutter/`.
-3. Connect your Android device (ensure Developer Options and USB debugging are enabled).
-4. Run:
+```text
+lib/
+├── main.dart                    # Biometric lock gate, app theme, and screen router
+├── data/
+│   ├── crypto_manager.dart      # AES-GCM secure storage wrapper
+│   └── vault_repository.dart    # Encrypted files database (load/save/delete/reorder)
+├── models/
+│   └── document.dart            # JSON Serializable document models
+├── providers/
+│   ├── auth_provider.dart       # Enforced LocalAuthentication state controller
+│   └── vault_provider.dart      # Vault documents Riverpod state notifier
+├── utils/
+│   ├── number_formatters.dart   # Credit Card, Expiry, and Aadhaar input formatters
+│   └── ocr_autofill.dart        # Text recognition line filters and regex heuristics
+├── ui/
+│   ├── theme/                   # Cinema colors palette & Inter typography
+│   ├── widgets/                 # Glassmorphic containers, details row, and items list
+│   └── screens/
+│       ├── lock_screen.dart     # Pulsing Fingerprint scanner lock gate
+│       ├── main_screen.dart     # Obsidian dashboard with chip filters and reorder buttons
+│       ├── add_document_screen.dart # Document attachments scanner, PDF splitted picker, forms
+│       └── view_document_screen.dart # Decrypted PDF viewer, details copier, system sharing
+```
+
+---
+
+## Installation & Setup
+
+Ensure you have your Flutter environment configured (`flutter --version` >= 3.4.0).
+
+### 1. Resolve Dependencies
+From the project root directory, run:
+```bash
+flutter pub get
+```
+
+### 2. Android Setup & Launch
+1. Ensure USB Debugging or WiFi debugging is enabled on your device.
+2. Build and run:
    ```bash
-   flutter run -d <device_id>
+   flutter run
    ```
-   Or build the debug APK:
+   Or build a debug APK:
    ```bash
    flutter build apk --debug
    ```
 
-#### 2. iOS Installation (Xcode)
-1. Navigate to the `VaultFlutter/ios/` directory and install Cocoapods dependencies:
+### 3. iOS Setup & Launch (Xcode)
+1. Install iOS pod dependencies:
    ```bash
-   cd VaultFlutter/ios
+   cd ios
    pod install
    ```
 2. Open the project workspace in Xcode:
    ```bash
-   open Runner.xcworkspace
+   open ios/Runner.xcworkspace
    ```
-3. Connect your iPhone and select it as the run target.
-4. Set your development team under **Runner > Signing & Capabilities**.
-5. Build and run the app.
+3. Set your Development Team under **Runner > Signing & Capabilities**.
+4. Run the app on your iPhone target.
 
-ℹ️ **iOS 14+ Debug JIT Launch Limit**:
-If you build the app in **Debug** mode, iOS security policies block you from opening it directly from your iPhone home screen (it will show a JIT startup screen).
+ℹ️ **iOS 14+ JIT Launch Warning**:
+If you build in **Debug** mode and try to open the app directly from your iPhone home screen, iOS security will show a JIT startup screen.
 - To test the debug build, run it attached to your debugger via Xcode or Terminal (`flutter run`).
-- To launch the app standalone from your iPhone home screen, build it in **Release Mode**:
-  - **In Xcode**: Go to **Product > Scheme > Edit Scheme... > Run** and set **Build Configuration** to `Release`.
-  - **In Terminal**: Run `flutter run --release`.
+- To launch the app standalone from your iPhone home screen, build it in **Release Mode** (In Xcode: Set **Product > Scheme > Edit Scheme... > Run > Build Configuration** to `Release` / In Terminal: `flutter run --release`).
 
 ⚠️ **Xcode Build Error: `Command PhaseScriptExecution failed with a nonzero exit code`**
-If you encounter this error during iOS compile:
+If you encounter this error during compilation:
 *   **Disable User Script Sandboxing (Xcode 15+)**:
-    1. Select the **Runner** project in the Xcode left navigation sidebar.
+    1. Select the **Runner** project in the Xcode sidebar.
     2. Go to the **Build Settings** tab.
-    3. Search for **User Script Sandboxing** (or `ENABLE_USER_SCRIPT_SANDBOXING`).
-    4. Set it to **No**.
+    3. Search for **User Script Sandboxing** (`ENABLE_USER_SCRIPT_SANDBOXING`).
+    4. Set it to **No** (this is already configured in the code, but verify if overridden).
 *   **Configure Local Flutter Path**:
-    If Xcode cannot locate your Flutter binary, create `VaultFlutter/ios/.xcode.env.local` and add:
+    If Xcode cannot locate your Flutter path, create `ios/.xcode.env.local` and add:
     ```bash
     export FLUTTER_ROOT="/opt/homebrew/share/flutter" # Adjust to your Flutter SDK path
     ```
 
-#### 3. macOS Installation
-1. Ensure macOS desktop support is enabled in Flutter:
+### 4. macOS Setup & Launch
+1. Enable macOS desktop support:
    ```bash
    flutter config --enable-macos-desktop
    ```
-2. From the `VaultFlutter` folder, run:
+2. Build and run:
    ```bash
    flutter run -d macos
    ```
 
 ---
 
-## 🤖 Native Compose Implementation (Android)
-
-Located in the root of the repository. Styled in a glassmorphic cinema theme.
-
-### How to Install & Run
-1. Open the root `Vault` folder in Android Studio.
-2. Let Gradle sync and download Play Services ML Kit dependencies.
-3. Build and deploy the debug package to your device.
-
----
-
 ## Security & Privacy Policy
 
-*   **No Internet Permission**: Neither the Compose app nor the Flutter app declares network permissions. They cannot communicate with any remote servers.
-*   **Decryption-in-Memory**: Encrypted scans and PDF files are decrypted on-the-fly inside local volatile RAM, and temporary files generated for system previews are instantly marked to delete on exit.
+*   **Zero Internet Permission**: The app declares no network permissions, preventing any telemetry, tracking, or credentials leakage.
+*   **Decryption-in-Memory**: Documents are decrypted on-the-fly inside local volatile RAM, and temporary files generated for preview are deleted immediately upon exit.
