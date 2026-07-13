@@ -48,6 +48,13 @@ The Flutter app is located under [`VaultFlutter/`](./VaultFlutter) and supports 
 4. Set your development team under **Runner > Signing & Capabilities**.
 5. Build and run the app.
 
+ℹ️ **iOS 14+ Debug JIT Launch Limit**:
+If you build the app in **Debug** mode, iOS security policies block you from opening it directly from your iPhone home screen (it will show a JIT startup screen).
+- To test the debug build, run it attached to your debugger via Xcode or Terminal (`flutter run`).
+- To launch the app standalone from your iPhone home screen, build it in **Release Mode**:
+  - **In Xcode**: Go to **Product > Scheme > Edit Scheme... > Run** and set **Build Configuration** to `Release`.
+  - **In Terminal**: Run `flutter run --release`.
+
 ⚠️ **Xcode Build Error: `Command PhaseScriptExecution failed with a nonzero exit code`**
 If you encounter this error during iOS compile:
 *   **Disable User Script Sandboxing (Xcode 15+)**:
