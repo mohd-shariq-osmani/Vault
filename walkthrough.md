@@ -1,96 +1,89 @@
-# Walkthrough: Vault App Enhancements & Fixes
+# Walkthrough: Vault App Redesign (Apple Design Principles) 🍎
 
-We have successfully implemented all fixes and features requested. The app builds cleanly with no static analysis issues or compiler errors.
+We have completely transformed the UI/UX of the Vault Flutter application, applying Apple's core interface design and fluid motion principles from Emil Kowalski's `apple-design` guide (distilled from WWDC *Designing Fluid Interfaces*).
 
----
-
-## 🛠️ Summary of Changes
-
-### 1. 🔐 Security & Screen Lock Fix
-- **Modified**: [auth_provider.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/providers/auth_provider.dart)
-- **Modified**: [MainActivity.kt](file:///Users/shariq/Downloads/VaultFlutter/android/app/src/main/kotlin/com/shariq/vault/MainActivity.kt)
-- **What was done**:
-  - Corrected biometric/passcode exception mappings to enforce a strict lockout state (`state = false`) on cancelations or platform authentication errors.
-  - Extended `MainActivity` from `FlutterFragmentActivity` instead of `FlutterActivity` to satisfy local authentication layout/fragment hosting requirements on Android, resolving the "screen not initiating" issue.
-  - Added specific checking for `notEnrolled` or `notAvailable` biometric exception states to automatically bypass locking when device lock screen credentials are completely turned off or missing on the system.
-
-### 2. 🎨 Horizontal Category Tabs Alignment
-- **Modified**: [main_screen.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/ui/screens/main_screen.dart)
-- **What was done**:
-  - Restyled the `FilterChip` widgets inside `_buildFilterRow()` to exactly match the Compose chip formatting:
-    - 10dp rounded corners (`borderRadius 10`).
-    - Custom outline margins and colors (`0.8` width, transparent on select, `cinemaStroke` on unselected).
-    - Removed checkmarks.
-    - Integrated leading icons for categories: **All** (`Icons.grid_view`), **Cards** (`Icons.credit_card`), **IDs** (`Icons.badge`), **Vehicle** (`Icons.directions_car`).
-    - Handled selected/unselected text and icon transition colors (Selected = White text/icon with `accentIndigo` background; Unselected = `textSecondary` text/icon with `cinemaSurface` background).
-
-### 3. 💳 Generic ID Card Support
-- **Modified**: [document.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/models/document.dart), [document_list_item.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/ui/widgets/document_list_item.dart), [view_document_screen.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/ui/screens/view_document_screen.dart), [add_document_screen.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/ui/screens/add_document_screen.dart), [main_screen.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/ui/screens/main_screen.dart)
-- **What was done**:
-  - Added `genericId` type to `DocumentType` enum.
-  - Added `genericIdNumber`, `genericIdName`, `genericIdExpiry`, and `genericIdType` fields to `VaultDocument` data model, and regenerated serialization.
-  - Added dashboard list UI support, details screen rendering, form fields, and dropdown menu additions.
-
-### 4. 📸 Native ML Kit Document Scanner
-- **Modified**: [pubspec.yaml](file:///Users/shariq/Downloads/VaultFlutter/pubspec.yaml), [add_document_screen.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/ui/screens/add_document_screen.dart)
-- **What was done**:
-  - Integrated `google_mlkit_document_scanner` package.
-  - Replaced camera capture trigger on mobile devices with the high-quality native ML Kit `DocumentScanner` interface.
-  - Supports scanning multiple pages (limit of 15 pages).
-
-### 5. 📂 PDF & Image Multi-Format Picker Uploads
-- **Modified**: [pubspec.yaml](file:///Users/shariq/Downloads/VaultFlutter/pubspec.yaml), [add_document_screen.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/ui/screens/add_document_screen.dart)
-- **What was done**:
-  - Integrated `file_picker` package.
-  - Replaced the gallery picker with a multi-file upload system allowing selection of both images and PDFs.
-  - Automatically splits picked PDF files into page image buffers using `pdfx` rendering, allowing users to view, manage, and merge them into a single compiled vault attachment.
-
-### 6. 🧠 Heuristic OCR Improvements & Date Pickers
-- **Modified**: [ocr_autofill.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/utils/ocr_autofill.dart), [add_document_screen.dart](file:///Users/shariq/Downloads/VaultFlutter/lib/ui/screens/add_document_screen.dart)
-- **What was done**:
-  - Enhanced name parsing heuristics to filter out credit card/bank branding.
-  - Added CVV keyword matching (extracting the nearest 3-4 digit sequence).
-  - Mapped Aadhaar "Year of Birth" / "YOB" fields.
-  - Added interactive `showDatePicker` dialogs on all full date fields (DOB, DL Expiry, RC Expiry, Generic ID Expiry) with a neat Calendar suffix button, marking fields `readOnly` to prevent typos.
-
-### 7. 📄 Open Document Previews
-- **Modified**: [view_document_screen.dart](file:///file:///Users/shariq/Downloads/VaultFlutter/lib/ui/screens/view_document_screen.dart)
-- **What was done**:
-  - Generalized attachment opening to launch any file types (including PDFs and images) in native apps.
-  - Temporarily saves the file in the cache directory with its title matching the document name (`[Title].[ext]`) before launching.
-
-### 8. 🎨 Modern Clean App Launcher Icon
-- **Generated**: `modern_vault_icon.jpg`
-![Modern Vault Launcher Icon](/Users/shariq/.gemini/antigravity/brain/71416a37-b137-439d-94ac-e889d9641c58/modern_vault_icon_1783886956694.jpg)
-- **What was done**:
-  - Generated a modern, clean, abstract geometric shield layout with neon blue and violet gradient lines, featuring a glassmorphic secure document inside on a black card.
-  - Configured and executed automated icon generation using `flutter_launcher_icons` to generate launchers for Android, iOS, and macOS.
+The entire application passes static analysis cleanly with **Zero Errors and Zero Warnings** (`No issues found!`).
 
 ---
 
-### 9. 🍏 iOS Xcode Sandboxing & Platform Target Fixes
-- **Modified**: [project.pbxproj](file:///Users/shariq/Downloads/VaultFlutter/ios/Runner.xcodeproj/project.pbxproj), [Podfile](file:///Users/shariq/Downloads/VaultFlutter/ios/Podfile)
+## 🛠️ Key Apple Design Implementations
+
+### 1. ⚡ Response — Zero Latency Tactile Feedback (`AppleTouchable`)
+- **Created**: [apple_touchable.dart](file:///Users/shariq/Downloads/Vault/lib/ui/widgets/apple_touchable.dart)
+- **Design Principle**: *"Respond on pointer-down, not on release... The moment lag appears, the feeling of directness falls off a cliff."*
 - **What was done**:
-  - Found that target-level overrides for `ENABLE_USER_SCRIPT_SANDBOXING` were explicitly set to `YES` for Debug, Release, and Profile target build configs. Set them to `NO` across all target configurations inside the Xcode project settings, allowing Cocoapods `rsync` scripts to compile properly.
-  - Upgraded iOS minimum deployment target platform version from `13.0` to `15.5` in both the Podfile and Xcode project targets to satisfy `google_mlkit_document_scanner` dependencies requirements.
+  - Implemented an `AppleTouchable` tactile spring wrapper that scales down instantly (`scale(0.96)`) on pointer-down (`onTapDown`), triggering light haptic feedback (`HapticFeedback.lightImpact()`).
+  - Restores scale seamlessly with critically damped spring curves (`Curves.easeOutCubic` / `Curves.easeOutBack`) upon gesture release or cancellation.
+  - Wrapped all cards, category pills, buttons, and action icons in `AppleTouchable`.
+
+---
+
+### 2. 🎛️ Apple Sliding Segmented Control (`AppleSegmentedControl`)
+- **Created**: [apple_segmented_control.dart](file:///Users/shariq/Downloads/Vault/lib/ui/widgets/apple_segmented_control.dart)
+- **Design Principle**: *"Continuous feedback during interaction; smooth spring motion on target changes."*
+- **What was done**:
+  - Built a custom iOS sliding pill segment control for category filtering (**All**, **Cards**, **IDs**, **Vehicle**).
+  - Features an animated active pill background indicator (`Curves.easeOutCubic`, 220ms), tactile tap scale down, and physical haptic feedback (`HapticFeedback.selectionClick()`) on category changes.
+
+---
+
+### 3. 💳 Apple Wallet Metallic Cards & Translucent Depth (`GlassmorphicCard`)
+- **Modified**: [glassmorphic_card.dart](file:///Users/shariq/Downloads/Vault/lib/ui/widgets/glassmorphic_card.dart), [document_list_item.dart](file:///Users/shariq/Downloads/Vault/lib/ui/widgets/document_list_item.dart)
+- **Design Principle**: *"Translucent materials, depth, and spatial consistency."*
+- **What was done**:
+  - Redesigned document list cards to mimic Apple Wallet titanium and metallic cards.
+  - Added continuous rounded corners (`BorderRadius.circular(22)`), specular highlight borders (`Colors.white.withAlpha(46)`), multi-layered backdrop blur (`BackdropFilter` sigma 10), and glow elevation shadows.
+  - Formatted credit card and document numbers using crisp SF Pro typography with optical letter spacing (`letterSpacing 1.2`).
+
+---
+
+### 4. 🔒 Apple Security Lock Gate (`LockScreen`)
+- **Modified**: [lock_screen.dart](file:///Users/shariq/Downloads/Vault/lib/ui/screens/lock_screen.dart)
+- **What was done**:
+  - Redesigned the authentication screen with Apple Security aesthetics:
+    - Frosted glass backdrop with ambient glowing blue/indigo radial spheres.
+    - Pulsing Apple Security Lock ring container with continuous spring scale pulse.
+    - Large SF Pro Heavy Header ("VAULT SECURED").
+    - Tactile primary action button ("UNLOCK VAULT") with instant pointer-down scale feedback and progress indicator.
+
+---
+
+### 5. 🏠 Apple Large Navigation Header & Search Dashboard (`MainScreen`)
+- **Modified**: [main_screen.dart](file:///Users/shariq/Downloads/Vault/lib/ui/screens/main_screen.dart)
+- **What was done**:
+  - Integrated Apple Large Title navigation layout ("Vault" in extra bold SF Pro typography with "N Items • Encrypted" badge).
+  - Added top action buttons (Search, Reorder mode toggle, Lock app) with tactile spring buttons.
+  - Integrated `AppleSegmentedControl` directly under the search bar.
+  - Redesigned the "Add Document" popup as a native iOS Action Sheet with top grab handle, rounded top corners (`Radius.circular(28)`), and inset card list tiles.
+
+---
+
+### 6. ➕ iOS Grouped Inset Forms (`AddDocumentScreen`)
+- **Modified**: [add_document_screen.dart](file:///Users/shariq/Downloads/Vault/lib/ui/screens/add_document_screen.dart)
+- **What was done**:
+  - Redesigned form fields into iOS Inset Grouped card containers (`#1C1C1E` background with subtle borders).
+  - Added iOS App Bar layout ("Cancel" text button on left, title in center, "Save" text button on right).
+  - Implemented `AppleTouchable` scan and upload buttons.
+  - Themed date pickers with Apple dark glass dialog styling.
+
+---
+
+### 7. 👁️ Apple Document Inspector (`ViewDocumentScreen`)
+- **Modified**: [view_document_screen.dart](file:///Users/shariq/Downloads/Vault/lib/ui/screens/view_document_screen.dart), [detail_row.dart](file:///Users/shariq/Downloads/Vault/lib/ui/widgets/detail_row.dart)
+- **What was done**:
+  - Enhanced detail rows into iOS inset cards with tap-to-reveal toggles and copy buttons with instant haptics (`HapticFeedback.mediumImpact()`).
+  - Added an Apple Wallet Hero card preview with specular reflection and copy shortcut.
+  - Created an iOS Share Document button trigger with native share sheet integration.
 
 ---
 
 ## 🔬 Verification Results
 
-### 1. Static Analysis Verification
+### Static Analysis Verification
 Ran `flutter analyze`:
 ```bash
 $ flutter analyze
-Analyzing VaultFlutter...
-No issues found! (ran in 8.3s)
+Analyzing Vault...                                              
+No issues found! (ran in 3.5s)
 ```
-Code is 100% clean and fully compiled.
-
-### 2. Serialization Generation
-Ran `build_runner`:
-```bash
-$ flutter pub run build_runner build --delete-conflicting-outputs
-Built with build_runner/aot in 22s; wrote 2 outputs.
-```
-Vault serialization generated successfully.
+Code passes static analysis with **zero errors and zero warnings**!
