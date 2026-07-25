@@ -1,75 +1,88 @@
 import 'package:flutter/material.dart';
 
-// Apple Dark Theme Palette (iOS / macOS Human Interface Guidelines)
-const applePitchBlack = Color(0xFF000000);
-const appleGroupedBackground = Color(0xFF000000);
-const appleCardBackground = Color(0xFF1C1C1E);
-const appleCardSecondary = Color(0xFF2C2C2E);
-const appleCardTertiary = Color(0xFF3A3A3C);
+// Frontend Design Pro: Obsidian Cyber-Vault Color System
+const pitchBlack = Color(0xFF000000);
+const vaultBackground = Color(0xFF050508);
+const vaultSurfaceElevated = Color(0xFF101018);
+const vaultSurfaceSecondary = Color(0xFF1B1B26);
+const vaultSurfaceTertiary = Color(0xFF282838);
 
-const appleBorderStroke = Color(0x1FFFFFFF);
-const appleBorderHighlight = Color(0x3DFFFFFF);
+// Borders & Glass Accents
+const vaultStroke = Color(0x24FFFFFF);
+const vaultStrokeActive = Color(0x52FFFFFF);
+const vaultGlowCyan = Color(0x3364D2FF);
 
-// Apple System Text Colors
+// Text Hierarchy
 const textPrimary = Color(0xFFFFFFFF);
 const textSecondary = Color(0x99EBEBF5); // 60% white
 const textMuted = Color(0x4DEBEBF5);     // 30% white
 
-// Apple Vibrant System Accent Colors
-const appleBlue = Color(0xFF0A84FF);
-const appleIndigo = Color(0xFF5E5CE6);
-const applePurple = Color(0xFFBF5AF2);
-const applePink = Color(0xFFFF375F);
-const appleRed = Color(0xFFFF453A);
-const appleOrange = Color(0xFFFF9F0C);
-const appleYellow = Color(0xFFFFD60A);
-const appleGreen = Color(0xFF30D158);
-const appleTeal = Color(0xFF64D2FF);
+// System Accent Colors
+const accentCyan = Color(0xFF64D2FF);
+const accentBlue = Color(0xFF0A84FF);
+const accentIndigo = Color(0xFF5E5CE6);
+const accentPurple = Color(0xFFBF5AF2);
+const accentPink = Color(0xFFFF375F);
+const accentRed = Color(0xFFFF453A);
+const accentOrange = Color(0xFFFF9F0C);
+const accentYellow = Color(0xFFFFD60A);
+const accentEmerald = Color(0xFF30D158);
 
-// Backward compatible aliases
-const cinemaDeep = applePitchBlack;
-const cinemaBase = appleGroupedBackground;
-const cinemaElevated = appleCardBackground;
-const cinemaSurface = appleCardSecondary;
-const cinemaStroke = appleBorderStroke;
-const accentIndigo = appleBlue;
-const accentGlow = Color(0x330A84FF);
-const accentEmerald = appleGreen;
-const accentRed = appleRed;
-const accentOrange = appleOrange;
-const accentPurple = applePurple;
+// Backward compatibility aliases
+const cinemaDeep = pitchBlack;
+const cinemaBase = vaultBackground;
+const cinemaElevated = vaultSurfaceElevated;
+const cinemaSurface = vaultSurfaceSecondary;
+const cinemaStroke = vaultStroke;
+const applePitchBlack = pitchBlack;
+const appleGroupedBackground = vaultBackground;
+const appleCardBackground = vaultSurfaceElevated;
+const appleCardSecondary = vaultSurfaceSecondary;
+const appleCardTertiary = vaultSurfaceTertiary;
+const appleBorderStroke = vaultStroke;
+const appleBorderHighlight = vaultStrokeActive;
+const appleBlue = accentBlue;
+const appleIndigo = accentIndigo;
+const applePurple = accentPurple;
+const applePink = accentPink;
+const appleRed = accentRed;
+const appleOrange = accentOrange;
+const appleYellow = accentYellow;
+const appleGreen = accentEmerald;
+const appleTeal = accentCyan;
+const accentGlow = vaultGlowCyan;
 
-// Apple Wallet Metallic / Premium Card Gradients & Swatches
+// 8 Premium Obsidian Metallic Card Themes
 const List<Map<String, dynamic>> cardColorThemes = [
   {
     'name': 'Titanium Blue',
     'gradient': [Color(0xFF0F172A), Color(0xFF0A84FF), Color(0xFF0284C7)],
-    'accent': appleBlue,
+    'accent': accentBlue,
   },
   {
-    'name': 'Emerald Green',
+    'name': 'Emerald Cyber',
     'gradient': [Color(0xFF064E3B), Color(0xFF30D158), Color(0xFF059669)],
-    'accent': appleGreen,
+    'accent': accentEmerald,
   },
   {
-    'name': 'Sunset Copper',
+    'name': 'Sunset Gold',
     'gradient': [Color(0xFF451A03), Color(0xFFFF9F0C), Color(0xFFD97706)],
-    'accent': appleOrange,
+    'accent': accentOrange,
   },
   {
-    'name': 'Deep Violet',
+    'name': 'Vivid Violet',
     'gradient': [Color(0xFF31103F), Color(0xFFBF5AF2), Color(0xFF9333EA)],
-    'accent': applePurple,
+    'accent': accentPurple,
   },
   {
-    'name': 'Cyan Obsidian',
+    'name': 'Cyan Neon',
     'gradient': [Color(0xFF082F49), Color(0xFF64D2FF), Color(0xFF0EA5E9)],
-    'accent': appleTeal,
+    'accent': accentCyan,
   },
   {
     'name': 'Crimson Rose',
     'gradient': [Color(0xFF4C0519), Color(0xFFFF375F), Color(0xFFE11D48)],
-    'accent': applePink,
+    'accent': accentPink,
   },
   {
     'name': 'Space Gray',
@@ -77,9 +90,9 @@ const List<Map<String, dynamic>> cardColorThemes = [
     'accent': Color(0xFFE5E5EA),
   },
   {
-    'name': 'Midnight Gold',
+    'name': 'Obsidian Gold',
     'gradient': [Color(0xFF2E2000), Color(0xFFFFD60A), Color(0xFFCA8A04)],
-    'accent': appleYellow,
+    'accent': accentYellow,
   },
 ];
 

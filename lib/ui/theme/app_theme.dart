@@ -5,13 +5,13 @@ import 'colors.dart';
 class AppTheme {
   static ThemeData get darkTheme {
     final colorScheme = ColorScheme.dark(
-      primary: appleBlue,
+      primary: accentBlue,
       onPrimary: Colors.white,
-      secondary: appleIndigo,
+      secondary: accentIndigo,
       onSecondary: Colors.white,
-      surface: appleCardBackground,
+      surface: vaultSurfaceElevated,
       onSurface: textPrimary,
-      error: appleRed,
+      error: accentRed,
       onError: Colors.white,
     );
 
@@ -19,10 +19,10 @@ class AppTheme {
 
     return base.copyWith(
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: applePitchBlack,
-      canvasColor: appleCardBackground,
-      cardColor: appleCardBackground,
-      dividerColor: appleBorderStroke,
+      scaffoldBackgroundColor: pitchBlack,
+      canvasColor: vaultSurfaceElevated,
+      cardColor: vaultSurfaceElevated,
+      dividerColor: vaultStroke,
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
       textTheme: GoogleFonts.interTextTheme(base.textTheme).copyWith(
@@ -110,7 +110,7 @@ class AppTheme {
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: applePitchBlack,
+        backgroundColor: pitchBlack,
         foregroundColor: textPrimary,
         elevation: 0,
         centerTitle: true,
@@ -120,31 +120,31 @@ class AppTheme {
           fontSize: 17,
           letterSpacing: -0.2,
         ),
-        iconTheme: const IconThemeData(color: appleBlue),
+        iconTheme: const IconThemeData(color: accentBlue),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: appleCardSecondary,
+        fillColor: vaultSurfaceSecondary,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: appleBorderStroke),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: vaultStroke),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: appleBorderStroke),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: vaultStroke),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: appleBlue, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: accentBlue, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: appleRed),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: accentRed),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: appleRed, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: accentRed, width: 1.5),
         ),
         labelStyle: GoogleFonts.inter(color: textSecondary, fontSize: 14),
         hintStyle: GoogleFonts.inter(color: textMuted, fontSize: 14),
@@ -153,7 +153,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: appleBlue,
+          backgroundColor: accentBlue,
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
@@ -167,30 +167,20 @@ class AppTheme {
           ),
         ),
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: appleBlue,
-          side: const BorderSide(color: appleBlue),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: appleBlue,
+        backgroundColor: accentBlue,
         foregroundColor: Colors.white,
         elevation: 6,
         shape: CircleBorder(),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: appleCardSecondary,
+        backgroundColor: vaultSurfaceSecondary,
         contentTextStyle: GoogleFonts.inter(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         behavior: SnackBarBehavior.floating,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: appleCardBackground,
+        backgroundColor: vaultSurfaceElevated,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titleTextStyle: GoogleFonts.inter(
           color: textPrimary,
