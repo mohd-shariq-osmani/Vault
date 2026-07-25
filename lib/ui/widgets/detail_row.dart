@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
+import 'apple_touchable.dart';
 
 class DetailRow extends StatefulWidget {
   final String label;
@@ -30,69 +31,88 @@ class _DetailRowState extends State<DetailRow> {
         ? '•' * widget.value.length
         : widget.value;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.label.toUpperCase(),
-                    style: GoogleFonts.inter(
-                      fontSize: 9,
-                      color: textSecondary,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.2,
-                    ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: appleCardBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: appleBorderStroke),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.label.toUpperCase(),
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    color: textSecondary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.1,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    displayValue,
-                    style: widget.isSensitive
-                        ? const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 14,
-                            color: textPrimary,
-                          )
-                        : GoogleFonts.inter(
-                            fontSize: 14,
-                            color: textPrimary,
-                          ),
-                  ),
-                ],
-              ),
-            ),
-            if (widget.isSensitive)
-              IconButton(
-                icon: Icon(
-                  _revealed ? Icons.visibility_off : Icons.visibility,
-                  size: 18,
-                  color: textMuted,
                 ),
-                onPressed: () => setState(() => _revealed = !_revealed),
-                tooltip: _revealed ? 'Hide' : 'Reveal',
-              ),
-            IconButton(
-              icon: const Icon(Icons.copy, size: 18, color: textMuted),
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: widget.value));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('${widget.label} copied to clipboard'),
-                    duration: const Duration(seconds: 2),
+                const SizedBox(height: 5),
+                Text(
+                  displayValue,
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    color: textPrimary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: widget.isSensitive && !_revealed ? 2.0 : -0.2,
                   ),
-                );
-              },
-              tooltip: 'Copy',
+                ),
+              ],
             ),
+          ),
+          if (widget.isSensitive) ...[
+            AppleTouchable(
+              onTap: () {
+                setState(() => _revealed = !_revealed);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: appleCardSecondary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _revealed ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                  size: 18,
+                  color: appleBlue,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
           ],
-        ),
-        const Divider(color: cinemaStroke, height: 1),
-        const SizedBox(height: 12),
-      ],
+          AppleTouchable(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: widget.value));
+              HapticFeedback.mediumImpact();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${widget.label} copied to clipboard'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: appleCardSecondary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.copy_rounded,
+                size: 18,
+                color: textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

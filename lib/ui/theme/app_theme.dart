@@ -1,49 +1,60 @@
 import 'package:flutter/material.dart';
-import 'colors.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'colors.dart';
 
 class AppTheme {
   static ThemeData get darkTheme {
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: accentIndigo,
-      brightness: Brightness.dark,
-      surface: cinemaBase,
+    final colorScheme = ColorScheme.dark(
+      primary: appleBlue,
+      onPrimary: Colors.white,
+      secondary: appleIndigo,
+      onSecondary: Colors.white,
+      surface: appleCardBackground,
       onSurface: textPrimary,
+      error: appleRed,
+      onError: Colors.white,
     );
 
     final base = ThemeData.dark(useMaterial3: true);
 
     return base.copyWith(
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: cinemaBase,
-      canvasColor: cinemaElevated,
-      cardColor: cinemaSurface,
-      dividerColor: cinemaStroke,
+      scaffoldBackgroundColor: applePitchBlack,
+      canvasColor: appleCardBackground,
+      cardColor: appleCardBackground,
+      dividerColor: appleBorderStroke,
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
       textTheme: GoogleFonts.interTextTheme(base.textTheme).copyWith(
         displayLarge: GoogleFonts.inter(
           color: textPrimary,
           fontWeight: FontWeight.w800,
-          fontSize: 32,
+          fontSize: 34,
+          letterSpacing: -0.5,
         ),
         displayMedium: GoogleFonts.inter(
           color: textPrimary,
           fontWeight: FontWeight.w700,
-          fontSize: 24,
+          fontSize: 28,
+          letterSpacing: -0.4,
         ),
         displaySmall: GoogleFonts.inter(
           color: textPrimary,
-          fontWeight: FontWeight.w600,
-          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          fontSize: 22,
+          letterSpacing: -0.3,
         ),
         headlineLarge: GoogleFonts.inter(
           color: textPrimary,
           fontWeight: FontWeight.w700,
-          fontSize: 22,
+          fontSize: 20,
+          letterSpacing: -0.2,
         ),
         headlineMedium: GoogleFonts.inter(
           color: textPrimary,
           fontWeight: FontWeight.w600,
           fontSize: 18,
+          letterSpacing: -0.1,
         ),
         headlineSmall: GoogleFonts.inter(
           color: textPrimary,
@@ -53,25 +64,28 @@ class AppTheme {
         titleLarge: GoogleFonts.inter(
           color: textPrimary,
           fontWeight: FontWeight.w600,
-          fontSize: 18,
+          fontSize: 17,
+          letterSpacing: -0.2,
         ),
         titleMedium: GoogleFonts.inter(
           color: textPrimary,
           fontWeight: FontWeight.w500,
-          fontSize: 16,
+          fontSize: 15,
         ),
         titleSmall: GoogleFonts.inter(
           color: textSecondary,
           fontWeight: FontWeight.w500,
-          fontSize: 14,
+          fontSize: 13,
         ),
         bodyLarge: GoogleFonts.inter(
           color: textPrimary,
           fontSize: 16,
+          height: 1.4,
         ),
         bodyMedium: GoogleFonts.inter(
           color: textPrimary,
           fontSize: 14,
+          height: 1.4,
         ),
         bodySmall: GoogleFonts.inter(
           color: textSecondary,
@@ -84,50 +98,53 @@ class AppTheme {
         ),
         labelMedium: GoogleFonts.inter(
           color: textSecondary,
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          fontSize: 11,
+          letterSpacing: 1.0,
         ),
         labelSmall: GoogleFonts.inter(
           color: textMuted,
-          fontWeight: FontWeight.w400,
-          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          fontSize: 10,
+          letterSpacing: 1.2,
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: cinemaElevated,
+        backgroundColor: applePitchBlack,
         foregroundColor: textPrimary,
         elevation: 0,
+        centerTitle: true,
         titleTextStyle: GoogleFonts.inter(
           color: textPrimary,
           fontWeight: FontWeight.w700,
-          fontSize: 20,
-          letterSpacing: 0.5,
+          fontSize: 17,
+          letterSpacing: -0.2,
         ),
-        iconTheme: const IconThemeData(color: textPrimary),
+        iconTheme: const IconThemeData(color: appleBlue),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: cinemaElevated,
+        fillColor: appleCardSecondary,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: cinemaStroke),
+          borderSide: const BorderSide(color: appleBorderStroke),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: cinemaStroke),
+          borderSide: const BorderSide(color: appleBorderStroke),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: accentIndigo, width: 2),
+          borderSide: const BorderSide(color: appleBlue, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: accentRed),
+          borderSide: const BorderSide(color: appleRed),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: accentRed, width: 2),
+          borderSide: const BorderSide(color: appleRed, width: 1.5),
         ),
         labelStyle: GoogleFonts.inter(color: textSecondary, fontSize: 14),
         hintStyle: GoogleFonts.inter(color: textMuted, fontSize: 14),
@@ -136,56 +153,51 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: accentIndigo,
-          foregroundColor: Colors.black,
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          backgroundColor: appleBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
           textStyle: GoogleFonts.inter(
             fontWeight: FontWeight.w700,
-            fontSize: 15,
-            letterSpacing: 0.5,
+            fontSize: 16,
+            letterSpacing: -0.2,
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: accentIndigo,
-          side: const BorderSide(color: accentIndigo),
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+          foregroundColor: appleBlue,
+          side: const BorderSide(color: appleBlue),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: accentIndigo,
-        foregroundColor: Colors.black,
-        elevation: 8,
-      ),
-      chipTheme: ChipThemeData(
-        backgroundColor: cinemaElevated,
-        selectedColor: accentGlow,
-        labelStyle: GoogleFonts.inter(color: textSecondary, fontSize: 13),
-        side: const BorderSide(color: cinemaStroke),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: appleBlue,
+        foregroundColor: Colors.white,
+        elevation: 6,
+        shape: CircleBorder(),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: cinemaSurface,
-        contentTextStyle: GoogleFonts.inter(color: textPrimary, fontSize: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: appleCardSecondary,
+        contentTextStyle: GoogleFonts.inter(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         behavior: SnackBarBehavior.floating,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: cinemaElevated,
+        backgroundColor: appleCardBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titleTextStyle: GoogleFonts.inter(
           color: textPrimary,
           fontWeight: FontWeight.w700,
           fontSize: 18,
         ),
-        contentTextStyle: GoogleFonts.inter(color: textSecondary, fontSize: 15),
+        contentTextStyle: GoogleFonts.inter(color: textSecondary, fontSize: 14),
       ),
     );
   }

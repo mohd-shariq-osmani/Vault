@@ -1,34 +1,61 @@
 import 'package:flutter/material.dart';
 
-const cinemaDeep = Color(0xFF020203);
-const cinemaBase = Color(0xFF080810);
-const cinemaElevated = Color(0xFF0E0E1A);
-const cinemaSurface = Color(0xFF14142A);
-const cinemaStroke = Color(0x1AFFFFFF);
-const textPrimary = Color(0xFFEDEDEF);
-const textSecondary = Color(0xFF8A8F98);
-const textMuted = Color(0xFF50535C);
-const accentIndigo = Color(0xFF6C8EFF);
-const accentGlow = Color(0x336C8EFF);
-const accentEmerald = Color(0xFF05C989);
-const accentRed = Color(0xFFFF4757);
-const accentOrange = Color(0xFFFF9F00);
-const accentPurple = Color(0xFF9D6FFF);
+// Apple Dark Theme Palette (iOS / macOS Human Interface Guidelines)
+const applePitchBlack = Color(0xFF000000);
+const appleGroupedBackground = Color(0xFF000000);
+const appleCardBackground = Color(0xFF1C1C1E);
+const appleCardSecondary = Color(0xFF2C2C2E);
+const appleCardTertiary = Color(0xFF3A3A3C);
 
+const appleBorderStroke = Color(0x1FFFFFFF);
+const appleBorderHighlight = Color(0x3DFFFFFF);
+
+// Apple System Text Colors
+const textPrimary = Color(0xFFFFFFFF);
+const textSecondary = Color(0x99EBEBF5); // 60% white
+const textMuted = Color(0x4DEBEBF5);     // 30% white
+
+// Apple Vibrant System Accent Colors
+const appleBlue = Color(0xFF0A84FF);
+const appleIndigo = Color(0xFF5E5CE6);
+const applePurple = Color(0xFFBF5AF2);
+const applePink = Color(0xFFFF375F);
+const appleRed = Color(0xFFFF453A);
+const appleOrange = Color(0xFFFF9F0C);
+const appleYellow = Color(0xFFFFD60A);
+const appleGreen = Color(0xFF30D158);
+const appleTeal = Color(0xFF64D2FF);
+
+// Backward compatible aliases
+const cinemaDeep = applePitchBlack;
+const cinemaBase = appleGroupedBackground;
+const cinemaElevated = appleCardBackground;
+const cinemaSurface = appleCardSecondary;
+const cinemaStroke = appleBorderStroke;
+const accentIndigo = appleBlue;
+const accentGlow = Color(0x330A84FF);
+const accentEmerald = appleGreen;
+const accentRed = appleRed;
+const accentOrange = appleOrange;
+const accentPurple = applePurple;
+
+// Apple Wallet Metallic / Premium Card Gradients
 const List<List<Color>> cardGradients = [
-  [Color(0xFF1A1A4E), Color(0xFF2D2B8A), Color(0xFF1E3A8A)],
-  [Color(0xFF064E3B), Color(0xFF065F46), Color(0xFF0D4F3C)],
-  [Color(0xFF7C2D12), Color(0xFF92400E), Color(0xFF6B1E0A)],
-  [Color(0xFF0F0F2E), Color(0xFF1A1A4E), Color(0xFF0D1635)],
-  [Color(0xFF2D1B69), Color(0xFF4C1D95), Color(0xFF1E0F3B)],
+  [Color(0xFF1C1C30), Color(0xFF0A84FF), Color(0xFF0040DD)], // Titanium Blue
+  [Color(0xFF0D2818), Color(0xFF30D158), Color(0xFF056526)], // Emerald Green
+  [Color(0xFF331400), Color(0xFFFF9F0C), Color(0xFFB35900)], // Burnt Copper
+  [Color(0xFF24102C), Color(0xFFBF5AF2), Color(0xFF751E9B)], // Deep Violet
+  [Color(0xFF1C252E), Color(0xFF64D2FF), Color(0xFF0077A3)], // Cyan Obsidian
+  [Color(0xFF1F1F24), Color(0xFF3A3A40), Color(0xFF141417)], // Space Gray Titanium
 ];
 
 const List<Color> accentForGradients = [
-  accentIndigo,
-  accentEmerald,
-  accentOrange,
-  accentIndigo,
-  accentPurple,
+  appleBlue,
+  appleGreen,
+  appleOrange,
+  applePurple,
+  appleTeal,
+  Color(0xFFE5E5EA),
 ];
 
 List<Color> gradientForDoc(int colorIndex) {

@@ -1,8 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../providers/auth_provider.dart';
 import '../theme/colors.dart';
+import '../widgets/apple_touchable.dart';
 
 class LockScreen extends ConsumerStatefulWidget {
   final VoidCallback onUnlocked;
@@ -26,8 +28,8 @@ class _LockScreenState extends ConsumerState<LockScreen>
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    _pulseAnimation = Tween<double>(begin: 0.94, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOutCubic),
     );
     // Auto authenticate on startup
     WidgetsBinding.instance.addPostFrameCallback((_) => _authenticate());
@@ -48,109 +50,168 @@ class _LockScreenState extends ConsumerState<LockScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Watch auth state and navigate when authenticated
     ref.listen<bool>(authProvider, (prev, next) {
       if (next && mounted) widget.onUnlocked();
     });
 
     return Scaffold(
-      backgroundColor: cinemaBase,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Pulsing lock icon
-                AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) => Transform.scale(
-                    scale: _pulseAnimation.value,
-                    child: child,
-                  ),
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: cinemaElevated,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: accentIndigo.withAlpha(77),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: accentIndigo.withAlpha(51),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.lock,
-                      color: accentIndigo,
-                      size: 48,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 36),
-                Text(
-                  'VAULT SECURED',
-                  style: GoogleFonts.inter(
-                    color: textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 24,
-                    letterSpacing: 3,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Your documents are protected with\nAES-256-GCM local encryption',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: textSecondary,
-                    fontSize: 14,
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 48),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _isAuthenticating ? null : _authenticate,
-                    icon: _isAuthenticating
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.black,
-                            ),
-                          )
-                        : const Icon(Icons.fingerprint, size: 22),
-                    label: Text(
-                      _isAuthenticating ? 'AUTHENTICATING...' : 'TAP TO UNLOCK',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accentIndigo,
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+      backgroundColor: applePitchBlack,
+      body: Stack(
+        children: [
+          // Ambient Apple Gradient Blur Background
+          Positioned(
+            top: -100,
+            left: -50,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: appleBlue.withAlpha(40),
+              ),
             ),
           ),
-        ),
+          Positioned(
+            bottom: -100,
+            right: -50,
+            child: Container(
+              width: 350,
+              height: 350,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: appleIndigo.withAlpha(40),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+              child: const SizedBox.expand(),
+            ),
+          ),
+          // Main Body
+          SafeArea(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Spacer(),
+                    // Pulsing Apple Lock Ring
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) => Transform.scale(
+                        scale: _pulseAnimation.value,
+                        child: child,
+                      ),
+                      child: Container(
+                        width: 104,
+                        height: 104,
+                        decoration: BoxDecoration(
+                          color: appleCardBackground,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: appleBlue.withAlpha(120),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: appleBlue.withAlpha(60),
+                              blurRadius: 36,
+                              spreadRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.lock_rounded,
+                          color: appleBlue,
+                          size: 46,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 36),
+                    Text(
+                      'VAULT SECURED',
+                      style: GoogleFonts.inter(
+                        color: textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 26,
+                        letterSpacing: 3,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Your personal documents are encrypted\nwith hardware-backed AES-256-GCM',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: textSecondary,
+                        fontSize: 14,
+                        height: 1.5,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Apple Tactile Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: AppleTouchable(
+                        onTap: _isAuthenticating ? null : _authenticate,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          decoration: BoxDecoration(
+                            color: appleBlue,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: appleBlue.withAlpha(80),
+                                blurRadius: 20,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_isAuthenticating)
+                                const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              else
+                                const Icon(
+                                  Icons.fingerprint_rounded,
+                                  size: 22,
+                                  color: Colors.white,
+                                ),
+                              const SizedBox(width: 10),
+                              Text(
+                                _isAuthenticating
+                                    ? 'AUTHENTICATING...'
+                                    : 'UNLOCK VAULT',
+                                style: GoogleFonts.inter(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                  color: Colors.white,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

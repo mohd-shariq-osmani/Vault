@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../models/document.dart';
 import '../theme/colors.dart';
+import 'apple_touchable.dart';
 import 'glassmorphic_card.dart';
 
 class DocumentListItem extends StatelessWidget {
@@ -42,17 +43,17 @@ class DocumentListItem extends StatelessWidget {
   IconData _getTypeIcon() {
     switch (document.type) {
       case DocumentType.paymentCard:
-        return Icons.credit_card;
+        return Icons.credit_card_rounded;
       case DocumentType.aadhaarCard:
-        return Icons.badge;
+        return Icons.badge_rounded;
       case DocumentType.panCard:
-        return Icons.article;
+        return Icons.article_rounded;
       case DocumentType.driversLicense:
-        return Icons.drive_eta;
+        return Icons.drive_eta_rounded;
       case DocumentType.vehicleRc:
-        return Icons.directions_car;
+        return Icons.directions_car_rounded;
       case DocumentType.genericId:
-        return Icons.card_membership;
+        return Icons.card_membership_rounded;
     }
   }
 
@@ -137,30 +138,31 @@ class DocumentListItem extends StatelessWidget {
     final icon = _getTypeIcon();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
       child: GlassmorphicCard(
         gradient: grad,
         glowColor: accent,
         onTap: onTap,
         onLongPress: onLongPress,
+        borderRadius: 22,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                // Type badge
+                // Apple-style Pill Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: accent.withAlpha(51),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: accent.withAlpha(77)),
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withAlpha(50), width: 0.8),
                   ),
                   child: Text(
                     badge,
                     style: GoogleFonts.inter(
-                      fontSize: 9,
-                      color: accent,
+                      fontSize: 10,
+                      color: Colors.white,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
                     ),
@@ -170,47 +172,55 @@ class DocumentListItem extends StatelessWidget {
                 if (isReorderMode)
                   Row(
                     children: [
-                      InkWell(
+                      AppleTouchable(
                         onTap: onMoveUp,
-                        borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          width: 32,
-                          height: 32,
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(26),
+                            color: Colors.white.withAlpha(35),
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withAlpha(50)),
                           ),
-                          child: const Icon(Icons.arrow_upward, size: 16, color: textPrimary),
+                          child: const Icon(Icons.arrow_upward_rounded, size: 18, color: Colors.white),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      InkWell(
+                      const SizedBox(width: 10),
+                      AppleTouchable(
                         onTap: onMoveDown,
-                        borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          width: 32,
-                          height: 32,
+                          width: 34,
+                          height: 34,
                           decoration: BoxDecoration(
-                            color: Colors.white.withAlpha(26),
+                            color: Colors.white.withAlpha(35),
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withAlpha(50)),
                           ),
-                          child: const Icon(Icons.arrow_downward, size: 16, color: textPrimary),
+                          child: const Icon(Icons.arrow_downward_rounded, size: 18, color: Colors.white),
                         ),
                       ),
                     ],
                   )
                 else
-                  Icon(icon, color: accent.withAlpha(180), size: 20),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(25),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: Colors.white.withAlpha(230), size: 18),
+                  ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               document.title,
               style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: textPrimary,
-                letterSpacing: 0.3,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: -0.3,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -218,13 +228,14 @@ class DocumentListItem extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               maskedNum,
-              style: GoogleFonts.robotoMono(
-                fontSize: 13,
-                color: textSecondary,
-                letterSpacing: 1.5,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: Colors.white.withAlpha(200),
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Row(
               children: [
                 if (holderName.isNotEmpty)
@@ -234,19 +245,20 @@ class DocumentListItem extends StatelessWidget {
                       Text(
                         'NAME',
                         style: GoogleFonts.inter(
-                          fontSize: 8,
-                          color: textMuted,
+                          fontSize: 9,
+                          color: Colors.white.withAlpha(140),
                           letterSpacing: 1.2,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         holderName.toUpperCase(),
                         style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: textSecondary,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.5,
+                          fontSize: 12,
+                          color: Colors.white.withAlpha(230),
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.4,
                         ),
                       ),
                     ],
@@ -257,26 +269,27 @@ class DocumentListItem extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        'VALID THRU',
+                        'EXPIRES',
                         style: GoogleFonts.inter(
-                          fontSize: 8,
-                          color: textMuted,
+                          fontSize: 9,
+                          color: Colors.white.withAlpha(140),
                           letterSpacing: 1.2,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         validityDate,
                         style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: textSecondary,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          color: Colors.white.withAlpha(230),
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                const SizedBox(width: 8),
-                Icon(Icons.lock, size: 12, color: accent.withAlpha(128)),
+                const SizedBox(width: 10),
+                Icon(Icons.lock_rounded, size: 14, color: Colors.white.withAlpha(160)),
               ],
             ),
           ],
