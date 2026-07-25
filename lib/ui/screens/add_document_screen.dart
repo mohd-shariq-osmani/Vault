@@ -42,6 +42,7 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
 
   // Common
   late TextEditingController _titleCtrl;
+  int _selectedColorIndex = 0;
 
   // Payment card
   late TextEditingController _cardholderCtrl;
@@ -92,6 +93,8 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
     super.initState();
     final doc = widget.existingDocument;
     _titleCtrl = TextEditingController(text: doc?.title ?? '');
+    _selectedColorIndex = doc?.cardColorIndex ?? Random().nextInt(cardColorThemes.length);
+
     _cardholderCtrl = TextEditingController(text: doc?.cardholderName ?? '');
     _cardNumberCtrl = TextEditingController(
         text: doc != null ? formatCardNumberInput(doc.cardNumber ?? '') : '');
@@ -462,14 +465,13 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
 
     final id = widget.existingDocument?.id ?? _uuid.v4();
     final dateAdded = widget.existingDocument?.dateAdded ?? DateTime.now().millisecondsSinceEpoch;
-    final colorIdx = widget.existingDocument?.cardColorIndex ?? Random().nextInt(100);
 
     final doc = VaultDocument(
       id: id,
       title: _titleCtrl.text.trim(),
       type: widget.documentType,
       dateAdded: dateAdded,
-      cardColorIndex: colorIdx,
+      cardColorIndex: _selectedColorIndex,
       cardholderName: widget.documentType == DocumentType.paymentCard ? _cardholderCtrl.text.trim() : null,
       cardNumber: widget.documentType == DocumentType.paymentCard ? _cardNumberCtrl.text.trim() : null,
       cardExpiry: widget.documentType == DocumentType.paymentCard ? _cardExpiryCtrl.text.trim() : null,
@@ -728,6 +730,142 @@ class _AddDocumentScreenState extends ConsumerState<AddDocumentScreen> {
                         ],
                       ),
                     ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Card Color Theme Picker
+              Text(
+                'CARD COLOR THEME',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: textSecondary,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: appleCardBackground,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: appleBorderStroke),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Live mini preview
+                    Container(
+                      height: 72,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: gradientForDoc(_selectedColorIndex),
+                        ),
+                        border: Border.all(color: Colors.white.withAlpha(40)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accentForDoc(_selectedColorIndex).withAlpha(50),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _titleCtrl.text.isNotEmpty ? _titleCtrl.text : 'Card Preview',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                cardColorThemes[_selectedColorIndex % cardColorThemes.length]['name'] as String,
+                                style: GoogleFonts.inter(
+                                  color: Colors.white.withAlpha(180),
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.color_lens_rounded,
+                            color: accentForDoc(_selectedColorIndex),
+                            size: 22,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // Swatches row
+                    SizedBox(
+                      height: 44,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        itemCount: cardColorThemes.length,
+                        itemBuilder: (ctx, i) {
+                          final isSelected = i == _selectedColorIndex;
+                          final themeColors = cardColorThemes[i]['gradient'] as List<Color>;
+                          final accentColor = cardColorThemes[i]['accent'] as Color;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 10),
+                            child: AppleTouchable(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _selectedColorIndex = i);
+                              },
+                              child: Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: themeColors,
+                                  ),
+                                  border: Border.all(
+                                    color: isSelected ? Colors.white : Colors.white.withAlpha(50),
+                                    width: isSelected ? 2.5 : 1,
+                                  ),
+                                  boxShadow: isSelected
+                                      ? [
+                                          BoxShadow(
+                                            color: accentColor.withAlpha(120),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : [],
+                                ),
+                                child: isSelected
+                                    ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ],
                 ),
               ),

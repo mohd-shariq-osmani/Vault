@@ -39,31 +39,56 @@ const accentRed = appleRed;
 const accentOrange = appleOrange;
 const accentPurple = applePurple;
 
-// Apple Wallet Metallic / Premium Card Gradients
-const List<List<Color>> cardGradients = [
-  [Color(0xFF1C1C30), Color(0xFF0A84FF), Color(0xFF0040DD)], // Titanium Blue
-  [Color(0xFF0D2818), Color(0xFF30D158), Color(0xFF056526)], // Emerald Green
-  [Color(0xFF331400), Color(0xFFFF9F0C), Color(0xFFB35900)], // Burnt Copper
-  [Color(0xFF24102C), Color(0xFFBF5AF2), Color(0xFF751E9B)], // Deep Violet
-  [Color(0xFF1C252E), Color(0xFF64D2FF), Color(0xFF0077A3)], // Cyan Obsidian
-  [Color(0xFF1F1F24), Color(0xFF3A3A40), Color(0xFF141417)], // Space Gray Titanium
-];
-
-const List<Color> accentForGradients = [
-  appleBlue,
-  appleGreen,
-  appleOrange,
-  applePurple,
-  appleTeal,
-  Color(0xFFE5E5EA),
+// Apple Wallet Metallic / Premium Card Gradients & Swatches
+const List<Map<String, dynamic>> cardColorThemes = [
+  {
+    'name': 'Titanium Blue',
+    'gradient': [Color(0xFF0F172A), Color(0xFF0A84FF), Color(0xFF0284C7)],
+    'accent': appleBlue,
+  },
+  {
+    'name': 'Emerald Green',
+    'gradient': [Color(0xFF064E3B), Color(0xFF30D158), Color(0xFF059669)],
+    'accent': appleGreen,
+  },
+  {
+    'name': 'Sunset Copper',
+    'gradient': [Color(0xFF451A03), Color(0xFFFF9F0C), Color(0xFFD97706)],
+    'accent': appleOrange,
+  },
+  {
+    'name': 'Deep Violet',
+    'gradient': [Color(0xFF31103F), Color(0xFFBF5AF2), Color(0xFF9333EA)],
+    'accent': applePurple,
+  },
+  {
+    'name': 'Cyan Obsidian',
+    'gradient': [Color(0xFF082F49), Color(0xFF64D2FF), Color(0xFF0EA5E9)],
+    'accent': appleTeal,
+  },
+  {
+    'name': 'Crimson Rose',
+    'gradient': [Color(0xFF4C0519), Color(0xFFFF375F), Color(0xFFE11D48)],
+    'accent': applePink,
+  },
+  {
+    'name': 'Space Gray',
+    'gradient': [Color(0xFF18181B), Color(0xFF3F3F46), Color(0xFF27272A)],
+    'accent': Color(0xFFE5E5EA),
+  },
+  {
+    'name': 'Midnight Gold',
+    'gradient': [Color(0xFF2E2000), Color(0xFFFFD60A), Color(0xFFCA8A04)],
+    'accent': appleYellow,
+  },
 ];
 
 List<Color> gradientForDoc(int colorIndex) {
-  final idx = colorIndex.abs() % cardGradients.length;
-  return cardGradients[idx];
+  final idx = colorIndex.abs() % cardColorThemes.length;
+  return cardColorThemes[idx]['gradient'] as List<Color>;
 }
 
 Color accentForDoc(int colorIndex) {
-  final idx = colorIndex.abs() % accentForGradients.length;
-  return accentForGradients[idx];
+  final idx = colorIndex.abs() % cardColorThemes.length;
+  return cardColorThemes[idx]['accent'] as Color;
 }
