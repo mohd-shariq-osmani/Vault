@@ -7,6 +7,7 @@ import '../../providers/vault_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../theme/colors.dart';
 import '../widgets/apple_segmented_control.dart';
+import '../widgets/apple_theme_toggle.dart';
 import '../widgets/apple_touchable.dart';
 import '../widgets/document_list_item.dart';
 import 'add_document_screen.dart';
@@ -77,70 +78,125 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   void _showAddDocumentMenu() {
     HapticFeedback.mediumImpact();
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final sheetBg = isLight ? Colors.white : appleCardBackground;
+    final titleColor = isLight ? lightTextPrimary : textPrimary;
+    final subColor = isLight ? lightTextSecondary : textSecondary;
+    final itemBg = isLight ? const Color(0xFFF2F2F7) : appleCardSecondary;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: appleCardBackground,
-      isScrollControlled: true,
+      backgroundColor: sheetBg,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Apple Bottom Sheet Handle
-            Center(
-              child: Container(
-                width: 36,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.white.withAlpha(50),
-                  borderRadius: BorderRadius.circular(10),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isLight ? Colors.black12 : Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                Text(
+                  'Add New Item',
+                  style: GoogleFonts.inter(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: titleColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Select document type to securely store in Vault',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: subColor,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildAddMenuItem(
+                  ctx: ctx,
+                  icon: Icons.credit_card_rounded,
+                  title: 'Payment Card',
+                  subtitle: 'Credit, Debit, Visa, Mastercard, Amex, RuPay',
+                  type: DocumentType.paymentCard,
+                  bgColor: itemBg,
+                ),
+                _buildAddMenuItem(
+                  ctx: ctx,
+                  icon: Icons.badge_rounded,
+                  title: 'Aadhaar Card',
+                  subtitle: '12-digit Indian National Identity',
+                  type: DocumentType.aadhaarCard,
+                  bgColor: itemBg,
+                ),
+                _buildAddMenuItem(
+                  ctx: ctx,
+                  icon: Icons.article_rounded,
+                  title: 'PAN Card',
+                  subtitle: '10-char Income Tax Permanent Account',
+                  type: DocumentType.panCard,
+                  bgColor: itemBg,
+                ),
+                _buildAddMenuItem(
+                  ctx: ctx,
+                  icon: Icons.drive_eta_rounded,
+                  title: "Driver's Licence",
+                  subtitle: 'Driving permit & holder credentials',
+                  type: DocumentType.driversLicense,
+                  bgColor: itemBg,
+                ),
+                _buildAddMenuItem(
+                  ctx: ctx,
+                  icon: Icons.directions_car_rounded,
+                  title: 'Vehicle RC',
+                  subtitle: 'Registration certificate & engine details',
+                  type: DocumentType.vehicleRc,
+                  bgColor: itemBg,
+                ),
+                _buildAddMenuItem(
+                  ctx: ctx,
+                  icon: Icons.card_membership_rounded,
+                  title: 'Generic ID Card',
+                  subtitle: 'Passport, Employee ID, Membership Card',
+                  type: DocumentType.genericId,
+                  bgColor: itemBg,
+                ),
+                const SizedBox(height: 8),
+              ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              'Add New Document',
-              style: GoogleFonts.inter(
-                color: textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Select document type to scan or upload',
-              style: GoogleFonts.inter(
-                color: textSecondary,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildDocTypeOption(ctx, DocumentType.paymentCard, Icons.credit_card_rounded, 'Payment Card', 'Credit, Debit, Visa, Mastercard'),
-            _buildDocTypeOption(ctx, DocumentType.aadhaarCard, Icons.badge_rounded, 'Aadhaar Card', 'UIDAI Identity Card'),
-            _buildDocTypeOption(ctx, DocumentType.panCard, Icons.article_rounded, 'PAN Card', 'Income Tax Permanent Account Number'),
-            _buildDocTypeOption(ctx, DocumentType.driversLicense, Icons.drive_eta_rounded, "Driver's Licence", 'State Transport Driving Licence'),
-            _buildDocTypeOption(ctx, DocumentType.vehicleRc, Icons.directions_car_rounded, 'Vehicle RC', 'Registration Certificate'),
-            _buildDocTypeOption(ctx, DocumentType.genericId, Icons.card_membership_rounded, 'Generic ID Card', 'Passport, Membership, Employee ID'),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildDocTypeOption(
-    BuildContext ctx,
-    DocumentType type,
-    IconData icon,
-    String title,
-    String subtitle,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+  Widget _buildAddMenuItem({
+    required BuildContext ctx,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required DocumentType type,
+    required Color bgColor,
+  }) {
+    final isLight = Theme.of(ctx).brightness == Brightness.light;
+    final primaryTextColor = isLight ? lightTextPrimary : textPrimary;
+    final secondaryTextColor = isLight ? lightTextSecondary : textSecondary;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
       child: AppleTouchable(
         onTap: () {
           Navigator.pop(ctx);
@@ -152,22 +208,24 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           );
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: appleCardSecondary,
+            color: bgColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: appleBorderStroke),
+            border: Border.all(
+              color: isLight ? const Color(0x1F000000) : appleBorderStroke,
+            ),
           ),
           child: Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: appleBlue.withAlpha(30),
-                  borderRadius: BorderRadius.circular(12),
+                  color: appleBlue.withAlpha(25),
+                  shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: appleBlue, size: 22),
+                child: Icon(icon, color: appleBlue, size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -177,23 +235,22 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     Text(
                       title,
                       style: GoogleFonts.inter(
-                        color: textPrimary,
-                        fontWeight: FontWeight.w700,
                         fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: primaryTextColor,
                       ),
                     ),
-                    const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: GoogleFonts.inter(
-                        color: textSecondary,
                         fontSize: 12,
+                        color: secondaryTextColor,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: textMuted, size: 20),
+              Icon(Icons.chevron_right_rounded, color: secondaryTextColor, size: 20),
             ],
           ),
         ),
@@ -201,27 +258,32 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-  void _confirmDelete(BuildContext context, VaultDocument doc) {
+  void _confirmDelete(BuildContext context, String docId, String title) {
     HapticFeedback.heavyImpact();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Document'),
-        content: Text('Are you sure you want to delete "${doc.title}"? This action cannot be undone.'),
+        title: Text('Delete $title?'),
+        content: const Text(
+          'This action cannot be undone. All encrypted local files for this document will be permanently deleted.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: textSecondary)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(color: appleBlue, fontWeight: FontWeight.w600),
+            ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ref.read(vaultProvider.notifier).deleteDocument(doc.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Document deleted')),
-              );
+              await ref.read(vaultProvider.notifier).deleteDocument(docId);
             },
-            child: const Text('Delete', style: TextStyle(color: appleRed, fontWeight: FontWeight.bold)),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.inter(color: appleRed, fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -231,9 +293,16 @@ class _MainScreenState extends ConsumerState<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final vaultState = ref.watch(vaultProvider);
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    final primaryTextColor = isLight ? lightTextPrimary : textPrimary;
+    final secondaryTextColor = isLight ? lightTextSecondary : textSecondary;
+    final cardBgColor = isLight ? Colors.white : appleCardBackground;
+    final searchBorderColor = isLight ? const Color(0x1F000000) : appleBorderStroke;
+    final iconBtnBg = isLight ? const Color(0xFFE5E5EA) : appleCardSecondary;
 
     return Scaffold(
-      backgroundColor: applePitchBlack,
+      backgroundColor: isLight ? lightBackground : pitchBlack,
       body: SafeArea(
         child: vaultState.when(
           loading: () => const Center(
@@ -287,7 +356,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                   '${docs.length} Items',
                                   style: GoogleFonts.inter(
                                     fontSize: 12,
-                                    color: textSecondary,
+                                    color: secondaryTextColor,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -299,49 +368,57 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                               style: GoogleFonts.inter(
                                 fontSize: 34,
                                 fontWeight: FontWeight.w800,
-                                color: textPrimary,
+                                color: primaryTextColor,
                                 letterSpacing: -0.5,
                               ),
                             ),
                           ],
                         ),
                         const Spacer(),
-                        // Reorder mode toggle
-                        AppleTouchable(
-                          onTap: () {
-                            setState(() => _isReorderMode = !_isReorderMode);
-                          },
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: _isReorderMode ? appleBlue : appleCardSecondary,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: appleBorderStroke),
+
+                        // Header Actions Row (Theme Toggle, Reorder, Lock)
+                        Row(
+                          children: [
+                            const AppleThemeToggle(),
+                            const SizedBox(width: 8),
+                            // Reorder mode toggle
+                            AppleTouchable(
+                              onTap: () {
+                                setState(() => _isReorderMode = !_isReorderMode);
+                              },
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: _isReorderMode ? appleBlue : iconBtnBg,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: searchBorderColor),
+                                ),
+                                child: Icon(
+                                  _isReorderMode ? Icons.check_rounded : Icons.swap_vert_rounded,
+                                  color: _isReorderMode ? Colors.white : appleBlue,
+                                  size: 19,
+                                ),
+                              ),
                             ),
-                            child: Icon(
-                              _isReorderMode ? Icons.check_rounded : Icons.swap_vert_rounded,
-                              color: _isReorderMode ? Colors.white : appleBlue,
-                              size: 20,
+                            const SizedBox(width: 8),
+                            // Lock app button
+                            AppleTouchable(
+                              onTap: () {
+                                ref.read(authProvider.notifier).lock();
+                              },
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: iconBtnBg,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: searchBorderColor),
+                                ),
+                                child: Icon(Icons.lock_rounded, color: secondaryTextColor, size: 17),
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        // Lock app button
-                        AppleTouchable(
-                          onTap: () {
-                            ref.read(authProvider.notifier).lock();
-                          },
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: appleCardSecondary,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: appleBorderStroke),
-                            ),
-                            child: const Icon(Icons.lock_rounded, color: textSecondary, size: 18),
-                          ),
+                          ],
                         ),
                       ],
                     ),
@@ -355,21 +432,33 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     child: Container(
                       height: 44,
                       decoration: BoxDecoration(
-                        color: appleCardBackground,
+                        color: cardBgColor,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: appleBorderStroke),
+                        border: Border.all(color: searchBorderColor),
+                        boxShadow: isLight
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withAlpha(8),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : [],
                       ),
                       child: TextField(
                         controller: _searchController,
                         onChanged: (val) => setState(() => _searchQuery = val),
-                        style: GoogleFonts.inter(color: textPrimary, fontSize: 15),
+                        style: GoogleFonts.inter(color: primaryTextColor, fontSize: 15),
                         decoration: InputDecoration(
                           hintText: 'Search cards & documents...',
-                          hintStyle: GoogleFonts.inter(color: textMuted, fontSize: 15),
-                          prefixIcon: const Icon(Icons.search_rounded, color: textSecondary, size: 20),
+                          hintStyle: GoogleFonts.inter(
+                            color: isLight ? lightTextMuted : textMuted,
+                            fontSize: 15,
+                          ),
+                          prefixIcon: Icon(Icons.search_rounded, color: secondaryTextColor, size: 20),
                           suffixIcon: _searchQuery.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(Icons.cancel_rounded, color: textMuted, size: 18),
+                                  icon: Icon(Icons.cancel_rounded, color: secondaryTextColor, size: 18),
                                   onPressed: () {
                                     _searchController.clear();
                                     setState(() => _searchQuery = '');
@@ -386,10 +475,10 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   ),
                 ),
 
-                // Apple Sliding Segmented Filter Pills
+                // Horizontal Category Segment Control Bar
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
                     child: AppleSegmentedControl(
                       items: _categories,
                       activeLabel: _activeFilter,
@@ -398,13 +487,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                   ),
                 ),
 
-                // Empty State
+                // Document List / Grid
                 if (filteredDocs.isEmpty)
                   SliverFillRemaining(
                     hasScrollBody: false,
                     child: Center(
                       child: Padding(
-                        padding: const EdgeInsets.all(32),
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
@@ -412,34 +501,31 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                color: appleCardBackground,
+                                color: appleBlue.withAlpha(20),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: appleBorderStroke),
                               ),
-                              child: const Icon(
-                                Icons.folder_zip_rounded,
-                                size: 36,
-                                color: textMuted,
-                              ),
+                              child: const Icon(Icons.shield_outlined, size: 40, color: appleBlue),
                             ),
                             const SizedBox(height: 20),
                             Text(
-                              _searchQuery.isNotEmpty ? 'No Matching Documents' : 'Vault is Empty',
+                              _searchQuery.isNotEmpty
+                                  ? 'No matching documents'
+                                  : 'Your Vault is Empty',
                               style: GoogleFonts.inter(
-                                fontSize: 18,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w700,
-                                color: textPrimary,
+                                color: primaryTextColor,
                               ),
                             ),
                             const SizedBox(height: 8),
                             Text(
                               _searchQuery.isNotEmpty
-                                  ? 'Try searching for a different keyword or card type.'
-                                  : 'Tap the "+" button below to store your payment cards and identity documents securely.',
+                                  ? 'Try searching for another keyword or title'
+                                  : 'Tap the + button to add your cards, Aadhaar, PAN, or Licence securely.',
                               textAlign: TextAlign.center,
                               style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: textSecondary,
+                                fontSize: 14,
+                                color: secondaryTextColor,
                                 height: 1.4,
                               ),
                             ),
@@ -449,32 +535,37 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     ),
                   )
                 else
-                  // Documents List
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final doc = filteredDocs[index];
-                        return DocumentListItem(
-                          document: doc,
-                          isReorderMode: _isReorderMode,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ViewDocumentScreen(documentId: doc.id),
-                              ),
-                            );
-                          },
-                          onLongPress: () => _confirmDelete(context, doc),
-                          onMoveUp: () {
-                            ref.read(vaultProvider.notifier).move(doc.id, true);
-                          },
-                          onMoveDown: () {
-                            ref.read(vaultProvider.notifier).move(doc.id, false);
-                          },
-                        );
-                      },
-                      childCount: filteredDocs.length,
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (ctx, index) {
+                          final doc = filteredDocs[index];
+                          final isFirst = index == 0;
+                          final isLast = index == filteredDocs.length - 1;
+
+                          return DocumentListItem(
+                            document: doc,
+                            isReorderMode: _isReorderMode,
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ViewDocumentScreen(documentId: doc.id),
+                                ),
+                              );
+                            },
+                            onLongPress: () => _confirmDelete(context, doc.id, doc.title),
+                            onMoveUp: !isFirst
+                                ? () => ref.read(vaultProvider.notifier).move(doc.id, true)
+                                : null,
+                            onMoveDown: !isLast
+                                ? () => ref.read(vaultProvider.notifier).move(doc.id, false)
+                                : null,
+                          );
+                        },
+                        childCount: filteredDocs.length,
+                      ),
                     ),
                   ),
 
@@ -486,8 +577,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           },
         ),
       ),
-
-      // Floating Add Button
       floatingActionButton: AppleTouchable(
         onTap: _showAddDocumentMenu,
         child: Container(
@@ -498,13 +587,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: appleBlue.withAlpha(90),
-                blurRadius: 18,
+                color: appleBlue.withAlpha(100),
+                blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
             ],
           ),
-          child: const Icon(Icons.add_rounded, size: 28, color: Colors.white),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
         ),
       ),
     );

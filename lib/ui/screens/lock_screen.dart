@@ -54,8 +54,14 @@ class _LockScreenState extends ConsumerState<LockScreen>
       if (next && mounted) widget.onUnlocked();
     });
 
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final bgBase = isLight ? lightBackground : pitchBlack;
+    final primaryTextColor = isLight ? lightTextPrimary : textPrimary;
+    final secondaryTextColor = isLight ? lightTextSecondary : textSecondary;
+    final lockCardBg = isLight ? Colors.white : appleCardBackground;
+
     return Scaffold(
-      backgroundColor: applePitchBlack,
+      backgroundColor: bgBase,
       body: Stack(
         children: [
           // Ambient Apple Gradient Blur Background
@@ -67,7 +73,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: appleBlue.withAlpha(40),
+                color: appleBlue.withAlpha(isLight ? 25 : 40),
               ),
             ),
           ),
@@ -79,7 +85,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
               height: 350,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: appleIndigo.withAlpha(40),
+                color: appleIndigo.withAlpha(isLight ? 25 : 40),
               ),
             ),
           ),
@@ -109,7 +115,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
                         width: 104,
                         height: 104,
                         decoration: BoxDecoration(
-                          color: appleCardBackground,
+                          color: lockCardBg,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: appleBlue.withAlpha(120),
@@ -134,7 +140,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
                     Text(
                       'VAULT SECURED',
                       style: GoogleFonts.inter(
-                        color: textPrimary,
+                        color: primaryTextColor,
                         fontWeight: FontWeight.w800,
                         fontSize: 26,
                         letterSpacing: 3,
@@ -145,7 +151,7 @@ class _LockScreenState extends ConsumerState<LockScreen>
                       'Your personal documents are encrypted\nwith hardware-backed AES-256-GCM',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.inter(
-                        color: textSecondary,
+                        color: secondaryTextColor,
                         fontSize: 14,
                         height: 1.5,
                         fontWeight: FontWeight.w400,

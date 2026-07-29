@@ -27,6 +27,13 @@ class _DetailRowState extends State<DetailRow> {
   Widget build(BuildContext context) {
     if (widget.value.isEmpty) return const SizedBox.shrink();
 
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final cardBg = isLight ? Colors.white : appleCardBackground;
+    final cardBorder = isLight ? const Color(0x1F000000) : appleBorderStroke;
+    final primaryTextColor = isLight ? lightTextPrimary : textPrimary;
+    final secondaryTextColor = isLight ? lightTextSecondary : textSecondary;
+    final btnBg = isLight ? const Color(0xFFF2F2F7) : appleCardSecondary;
+
     final displayValue = widget.isSensitive && !_revealed
         ? '•' * widget.value.length
         : widget.value;
@@ -35,9 +42,18 @@ class _DetailRowState extends State<DetailRow> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: appleCardBackground,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: appleBorderStroke),
+        border: Border.all(color: cardBorder),
+        boxShadow: isLight
+            ? [
+                BoxShadow(
+                  color: Colors.black.withAlpha(6),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : [],
       ),
       child: Row(
         children: [
@@ -49,7 +65,7 @@ class _DetailRowState extends State<DetailRow> {
                   widget.label.toUpperCase(),
                   style: GoogleFonts.inter(
                     fontSize: 10,
-                    color: textSecondary,
+                    color: secondaryTextColor,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 1.1,
                   ),
@@ -59,7 +75,7 @@ class _DetailRowState extends State<DetailRow> {
                   displayValue,
                   style: GoogleFonts.inter(
                     fontSize: 16,
-                    color: textPrimary,
+                    color: primaryTextColor,
                     fontWeight: FontWeight.w600,
                     letterSpacing: widget.isSensitive && !_revealed ? 2.0 : -0.2,
                   ),
@@ -75,7 +91,7 @@ class _DetailRowState extends State<DetailRow> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: appleCardSecondary,
+                  color: btnBg,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -101,13 +117,13 @@ class _DetailRowState extends State<DetailRow> {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: appleCardSecondary,
+                color: btnBg,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.copy_rounded,
                 size: 18,
-                color: textSecondary,
+                color: secondaryTextColor,
               ),
             ),
           ),

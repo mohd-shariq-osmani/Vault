@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/auth_provider.dart';
+import 'providers/theme_provider.dart';
 import 'ui/screens/lock_screen.dart';
 import 'ui/screens/main_screen.dart';
 import 'ui/theme/app_theme.dart';
@@ -10,14 +11,18 @@ void main() {
   runApp(const ProviderScope(child: VaultApp()));
 }
 
-class VaultApp extends StatelessWidget {
+class VaultApp extends ConsumerWidget {
   const VaultApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return MaterialApp(
       title: 'Vault',
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       debugShowCheckedModeBanner: false,
       home: const AppRoot(),
     );

@@ -1,21 +1,34 @@
 import 'package:flutter/material.dart';
 
-// Frontend Design Pro: Obsidian Cyber-Vault Color System
+// Dark Theme Palette (Obsidian Cyber-Vault)
 const pitchBlack = Color(0xFF000000);
 const vaultBackground = Color(0xFF050508);
 const vaultSurfaceElevated = Color(0xFF101018);
 const vaultSurfaceSecondary = Color(0xFF1B1B26);
 const vaultSurfaceTertiary = Color(0xFF282838);
 
-// Borders & Glass Accents
 const vaultStroke = Color(0x24FFFFFF);
 const vaultStrokeActive = Color(0x52FFFFFF);
 const vaultGlowCyan = Color(0x3364D2FF);
 
-// Text Hierarchy
+// Light Theme Palette (Clean Apple Light)
+const lightBackground = Color(0xFFF2F2F7);
+const lightSurfaceElevated = Color(0xFFFFFFFF);
+const lightSurfaceSecondary = Color(0xFFE5E5EA);
+const lightSurfaceTertiary = Color(0xFFD1D1D6);
+
+const lightStroke = Color(0x1F000000);
+const lightStrokeActive = Color(0x38000000);
+
+// Text Hierarchy (Dark Mode Defaults)
 const textPrimary = Color(0xFFFFFFFF);
 const textSecondary = Color(0x99EBEBF5); // 60% white
 const textMuted = Color(0x4DEBEBF5);     // 30% white
+
+// Text Hierarchy (Light Mode)
+const lightTextPrimary = Color(0xFF1C1C1E);
+const lightTextSecondary = Color(0x993C3C43);
+const lightTextMuted = Color(0x4D3C3C43);
 
 // System Accent Colors
 const accentCyan = Color(0xFF64D2FF);
@@ -52,7 +65,7 @@ const appleGreen = accentEmerald;
 const appleTeal = accentCyan;
 const accentGlow = vaultGlowCyan;
 
-// 8 Premium Obsidian Metallic Card Themes
+// 8 Premium Metallic Card Themes
 const List<Map<String, dynamic>> cardColorThemes = [
   {
     'name': 'Titanium Blue',

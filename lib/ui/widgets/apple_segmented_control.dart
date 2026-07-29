@@ -18,12 +18,18 @@ class AppleSegmentedControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final containerBg = isLight ? const Color(0xFFE5E5EA) : appleCardBackground;
+    final containerBorder = isLight ? const Color(0x1F000000) : appleBorderStroke;
+    final selectedBg = isLight ? Colors.white : appleCardTertiary;
+    final selectedBorder = isLight ? const Color(0x38000000) : appleBorderHighlight;
+
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: appleCardBackground,
+        color: containerBg,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: appleBorderStroke),
+        border: Border.all(color: containerBorder),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
@@ -37,6 +43,10 @@ class AppleSegmentedControl extends StatelessWidget {
               final label = item['label'] as String;
               final icon = item['icon'] as IconData;
               final isSelected = label == activeLabel;
+
+              final itemTextColor = isLight
+                  ? (isSelected ? lightTextPrimary : lightTextSecondary)
+                  : (isSelected ? Colors.white : textSecondary);
 
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -53,15 +63,15 @@ class AppleSegmentedControl extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? appleCardTertiary : Colors.transparent,
+                      color: isSelected ? selectedBg : Colors.transparent,
                       borderRadius: BorderRadius.circular(18),
                       border: isSelected
-                          ? Border.all(color: appleBorderHighlight, width: 0.8)
+                          ? Border.all(color: selectedBorder, width: 0.8)
                           : null,
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: Colors.black.withAlpha(90),
+                                color: Colors.black.withAlpha(isLight ? 20 : 90),
                                 blurRadius: 6,
                                 offset: const Offset(0, 2),
                               ),
@@ -74,7 +84,7 @@ class AppleSegmentedControl extends StatelessWidget {
                         Icon(
                           icon,
                           size: 15,
-                          color: isSelected ? Colors.white : textSecondary,
+                          color: itemTextColor,
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -82,7 +92,7 @@ class AppleSegmentedControl extends StatelessWidget {
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                            color: isSelected ? Colors.white : textSecondary,
+                            color: itemTextColor,
                             letterSpacing: -0.1,
                           ),
                         ),
